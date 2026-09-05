@@ -429,6 +429,38 @@ textarea.area{height:auto;min-height:80px;padding:10px 14px;resize:vertical;line
 
 <div class="toast" id="toast"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m5 12 5 5L20 7"/></svg><span id="toastMsg"></span></div>
 
+<!-- Config inyectada por EasyPanel (envsubst desde SUPABASE_URL / SUPABASE_ANON_KEY) -->
+<script src="config.js"></script>
+<!-- Cliente Supabase (Supabase Cloud) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* Enganche Supabase — de momento solo handshake/indicador.
+   Los datos siguen en el navegador (localStorage) hasta la migración. */
+window.sb = null;
+(function(){
+  try{
+    var cfg = window.__SUPABASE__ || {};
+    if(cfg.url && cfg.anonKey && window.supabase){
+      window.sb = window.supabase.createClient(cfg.url, cfg.anonKey);
+      console.log('[Supabase] cliente inicializado →', cfg.url);
+      fetch(cfg.url.replace(/\/$/,'') + '/auth/v1/health', { headers: { apikey: cfg.anonKey } })
+        .then(function(r){ console.log('[Supabase] health:', r.status); })
+        .catch(function(e){ console.warn('[Supabase] health error:', e.message); });
+    } else {
+      console.log('[Supabase] sin configurar (modo local/demo)');
+    }
+  }catch(e){ console.warn('[Supabase] init error:', e.message); }
+  var foot = document.querySelector('.loginCard .foot');
+  if(foot){
+    var on = !!window.sb;
+    var b = document.createElement('div');
+    b.style.cssText = 'margin-top:12px;font-size:11.5px;color:var(--faint);display:flex;align-items:center;justify-content:center;gap:7px';
+    b.innerHTML = '<span style="width:7px;height:7px;border-radius:50%;display:inline-block;background:'+(on?'#12b76a':'#c8c6d0')+'"></span>'+(on?'Base de datos conectada (Supabase)':'Modo local (demo) · Supabase sin configurar');
+    foot.parentNode.appendChild(b);
+  }
+})();
+</script>
+
 <script>
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const DOMAIN='@onepulso.online';
