@@ -516,15 +516,18 @@ function save(k,v){
 const taskToRow=t=>({id:t.id,title:t.t,date:t.date||null,assignee:t.assignee||null,done:!!t.done,note:t.note||null,images:t.images||[]});
 const clientToRow=c=>({id:c.id,name:c.name,email:c.email||null,owner:c.owner||null,status:c.status||'on'});
 function syncArray(table,oldArr,newArr,mapFn){
+  // Solo ACTUALIZA/crea filas cambiadas (nunca borra por diferencia: los borrados
+  // son explícitos con removeRow, para no perder lo que otro haya añadido).
   if(!window.sb) return;
   const oldById={}; oldArr.forEach(x=>oldById[x.id]=x);
-  const newIds=new Set(newArr.map(x=>x.id));
   const changed=newArr.filter(x=>{const o=oldById[x.id];return !o||JSON.stringify(mapFn(o))!==JSON.stringify(mapFn(x));});
-  const removed=oldArr.filter(x=>!newIds.has(x.id)).map(x=>x.id);
-  (async()=>{ try{
-    if(changed.length){const {error}=await sb.from(table).upsert(changed.map(mapFn));if(error)throw error;}
-    if(removed.length){const {error}=await sb.from(table).delete().in('id',removed);if(error)throw error;}
-  }catch(e){console.warn('sync '+table,e);toast('No se pudo guardar: '+(e.message||e));await loadAll();rerender();} })();
+  if(!changed.length) return;
+  (async()=>{ try{ const {error}=await sb.from(table).upsert(changed.map(mapFn)); if(error) throw error; }
+    catch(e){ console.warn('sync '+table,e); toast('No se pudo guardar: '+(e.message||e)); await loadAll(); rerender(); } })();
+}
+async function removeRow(table,id){
+  if(window.sb){ const {error}=await sb.from(table).delete().eq('id',id); if(error){ toast('No se pudo eliminar: '+error.message); return false; } }
+  return true;
 }
 function kvUpsert(k,v){ if(!window.sb)return; (async()=>{try{const {error}=await sb.from('app_kv').upsert({k,v,updated_at:new Date().toISOString()});if(error)throw error;}catch(e){console.warn('kv',e);toast('No se pudo guardar: '+(e.message||e));}})(); }
 async function loadAll(){
@@ -748,7 +751,7 @@ calWrap.addEventListener('drop',e=>{
   if(t&&(admin()||(me&&t.assignee===me.email))&&t.date!==cell.dataset.date){t.date=cell.dataset.date;save(K.tasks,tasks);renderCalendar();renderTasks();updateCounts();toast('Tarea movida a '+fmtDate(cell.dataset.date));}
 });
 const taskById=id=>load(K.tasks,[]).find(t=>t.id===id);
-function deleteTask(id){save(K.tasks,load(K.tasks,[]).filter(t=>t.id!==id));renderCalendar();renderTasks();updateCounts();toast('Tarea eliminada');}
+async function deleteTask(id){ if(!(await removeRow('tasks',id))) return; DB.tasks=DB.tasks.filter(t=>t.id!==id); renderCalendar();renderTasks();updateCounts();toast('Tarea eliminada'); }
 function canEditTask(id){const t=taskById(id);return !!t&&(admin()||(me&&t.assignee===me.email));}
 function editReminder(iso){if(!admin())return;const all=load(K.reminders,{});const cur=all[iso]||'';const v=prompt('Recordatorio para el '+fmtDate(iso)+':',cur);if(v===null)return;if(v.trim()==='')delete all[iso];else all[iso]=v.trim();save(K.reminders,all);renderCalendar();}
 function reopenTask(id){const tasks=load(K.tasks,[]),t=tasks.find(x=>x.id===id);if(!t)return;t.done=false;save(K.tasks,tasks);renderCalendar();renderTasks();updateCounts();toast('Tarea reabierta');}
@@ -837,7 +840,7 @@ function renderClients(){
   );}).join('')||'<tr><td colspan="5" class="empty">Aún no hay clientes.</td></tr>';
 }
 $('#clientRows').addEventListener('click',e=>{
-  const del=e.target.closest('[data-del-client]'); if(del){e.stopPropagation();save(K.clients,load(K.clients,[]).filter(c=>c.id!==+del.dataset.delClient));renderClients();updateCounts();toast('Cliente eliminado');return;}
+  const del=e.target.closest('[data-del-client]'); if(del){e.stopPropagation();const cid=+del.dataset.delClient;removeRow('clients',cid).then(ok=>{if(ok){DB.clients=DB.clients.filter(c=>c.id!==cid);renderClients();updateCounts();toast('Cliente eliminado');}});return;}
   const row=e.target.closest('tr[data-id]'); if(row&&admin())openClient(+row.dataset.id);
 });
 let editingClient=null;
