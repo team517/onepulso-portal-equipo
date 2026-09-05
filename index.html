@@ -521,9 +521,11 @@ seed();
 (function(){var us=load(K.users,[]);var t=us.find(u=>u.email==='team@onepulso.online');if(t&&t.pass==='onepulso'){t.pass='Xarifa229%';save(K.users,us);}})();
 
 /* users helpers */
-const usersMap=()=>{const o={};load(K.users,[]).forEach(u=>o[u.email]=u);return o;};
+let profilesCache=[];
+async function loadProfiles(){ if(!window.sb) return; try{ const {data}=await sb.from('profiles').select('id,email,name,role,created_at').order('created_at'); profilesCache=data||[]; }catch(e){ console.warn('loadProfiles',e); } }
+const usersMap=()=>{const o={};profilesCache.forEach(u=>o[u.email]=u);return o;};
 function optionsForUsers(sel,val,emptyLabel){
-  sel.innerHTML='<option value="">'+emptyLabel+'</option>'+load(K.users,[]).map(u=>'<option value="'+esc(u.email)+'"'+(u.email===val?' selected':'')+'>'+esc(u.name)+'</option>').join('');
+  sel.innerHTML='<option value="">'+emptyLabel+'</option>'+profilesCache.map(u=>'<option value="'+esc(u.email)+'"'+(u.email===val?' selected':'')+'>'+esc(u.name||u.email)+'</option>').join('');
   if(val) sel.value=val;
 }
 function whoTag(email,um){
@@ -548,20 +550,27 @@ $('#pwToggle').addEventListener('click',()=>{
 function loginErr(msg,fields=['fEmail','fPass']){const a=$('#alert');$('#alertMsg').textContent=msg;a.classList.remove('show');void a.offsetWidth;a.classList.add('show');fields.forEach(f=>$('#'+f).classList.add('err'));}
 function loginClear(){$('#alert').classList.remove('show');$('#fEmail').classList.remove('err');$('#fPass').classList.remove('err');}
 $('#email').addEventListener('input',loginClear);$('#password').addEventListener('input',loginClear);
-$('#loginForm').addEventListener('submit',e=>{
+$('#loginForm').addEventListener('submit',async e=>{
   e.preventDefault();loginClear();
   const email=$('#email').value.trim().toLowerCase(), pass=$('#password').value;
   if(!email) return loginErr('Introduce tu correo de empresa.',['fEmail']);
   if(!email.endsWith(DOMAIN)) return loginErr('Solo se permite el acceso con cuentas '+DOMAIN+'.',['fEmail']);
   if(!pass) return loginErr('Introduce tu contraseña.',['fPass']);
+  if(!window.sb) return loginErr('No hay conexión con la base de datos. Revisa la configuración de Supabase.');
   const btn=$('#loginBtn');btn.disabled=true;btn.innerHTML='<span class="spin"></span> Verificando…';
-  setTimeout(()=>{
-    const u=load(K.users,[]).find(x=>x.email===email);
-    btn.disabled=false;btn.textContent='Entrar';
-    if(!u||u.pass!==pass){$('#password').select();return loginErr('Correo o contraseña incorrectos.');}
-    save(K.session,{email:u.email});enterApp(u);
-  },500);
+  const {error}=await sb.auth.signInWithPassword({email,password:pass});
+  btn.disabled=false;btn.textContent='Entrar';
+  if(error){$('#password').select();return loginErr('Correo o contraseña incorrectos.');}
+  await afterAuth();
 });
+async function afterAuth(){
+  const {data:{user}}=await sb.auth.getUser();
+  if(!user) return;
+  let prof=null; try{ prof=(await sb.from('profiles').select('id,email,name,role').eq('id',user.id).single()).data; }catch(_){}
+  me={ id:user.id, email:user.email, name:(prof&&prof.name)||user.email, role:(prof&&prof.role)||'member' };
+  await loadProfiles();
+  enterApp(me);
+}
 function enterApp(u){
   me=u;
   $('#login').hidden=true;$('#app').hidden=false;
@@ -570,7 +579,7 @@ function enterApp(u){
   calView='semana';calDate=new Date(TODAY);
   renderAll();go('calendario');toast('Sesión iniciada · '+u.name);
 }
-$('#logout').addEventListener('click',()=>{localStorage.removeItem(K.session);me=null;$('#app').hidden=true;$('#login').hidden=false;$('#loginForm').reset();loginClear();$('#email').focus();});
+$('#logout').addEventListener('click',async ()=>{try{if(window.sb)await sb.auth.signOut();}catch(_){}me=null;profilesCache=[];$('#app').hidden=true;$('#login').hidden=false;$('#loginForm').reset();loginClear();$('#email').focus();});
 
 /* ============ NAV ============ */
 const TITLES={calendario:['Calendario','Semana del equipo'],tareas:['Tareas','Tus tareas asignadas'],clientes:['Clientes','Cuentas y responsables'],usuarios:['Usuarios','Gestiona quién puede entrar']};
@@ -592,7 +601,7 @@ function renderAll(){renderCalendar();renderTasks();renderClients();renderUsers(
 function updateCounts(){
   $('#cTasks').textContent=load(K.tasks,[]).filter(t=>!t.done&&me&&t.assignee===me.email).length;
   $('#cClients').textContent=load(K.clients,[]).length;
-  $('#cUsers').textContent=load(K.users,[]).length;
+  $('#cUsers').textContent=profilesCache.length;
 }
 
 /* ----- Calendar ----- */
@@ -765,26 +774,29 @@ $('#clSave').addEventListener('click',()=>{
 
 /* ----- Users ----- */
 function renderUsers(){
-  const us=load(K.users,[]);
+  const us=profilesCache;
   $('#usersMeta').textContent=us.length+' con acceso';
-  $('#userRows').innerHTML=us.map(u=>{const isMe=me&&u.email===me.email;return(
-    '<tr><td><div class="who"><span class="av" style="background:'+colorFor(u.name)+'">'+initials(u.name)+'</span><b>'+esc(u.name)+(isMe?' <span class="faint" style="font-weight:500">(tú)</span>':'')+'</b></div></td>'+
-    '<td class="muted">'+esc(u.email)+'</td><td><span class="badge '+(u.role==='admin'?'admin':'member')+'">'+(u.role==='admin'?'Administrador':'Miembro')+'</span></td><td class="muted">'+esc(u.created||'—')+'</td>'+
+  $('#userRows').innerHTML=us.map(u=>{const isMe=me&&u.email===me.email;const nm=u.name||u.email;return(
+    '<tr><td><div class="who"><span class="av" style="background:'+colorFor(nm)+'">'+initials(nm)+'</span><b>'+esc(nm)+(isMe?' <span class="faint" style="font-weight:500">(tú)</span>':'')+'</b></div></td>'+
+    '<td class="muted">'+esc(u.email)+'</td><td><span class="badge '+(u.role==='admin'?'admin':'member')+'">'+(u.role==='admin'?'Administrador':'Miembro')+'</span></td><td class="muted">'+esc((u.created_at||'').slice(0,10)||'—')+'</td>'+
     '<td style="text-align:right">'+(!isMe?'<button class="rowbtn" data-del-user="'+esc(u.email)+'" title="Quitar acceso"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></button>':'')+'</td></tr>'
   );}).join('');
 }
-$('#userRows').addEventListener('click',e=>{const b=e.target.closest('[data-del-user]');if(!b)return;save(K.users,load(K.users,[]).filter(u=>u.email!==b.dataset.delUser));renderUsers();updateCounts();$('#stTeam').textContent=load(K.users,[]).length;toast('Acceso retirado');});
+$('#userRows').addEventListener('click',async e=>{const b=e.target.closest('[data-del-user]');if(!b)return;const email=b.dataset.delUser;if(!confirm('¿Quitar el acceso a '+email+'? Se borrará su cuenta.'))return;const {data,error}=await sb.functions.invoke('admin-create-user',{body:{action:'delete',email}});if(error){toast('Error: '+error.message);return;}if(!data.ok){toast(data.error||'No se pudo');return;}await loadProfiles();renderUsers();updateCounts();$('#stTeam').textContent=profilesCache.length;toast('Acceso retirado');});
 function uErr(m){const a=$('#uAlert');$('#uAlertMsg').textContent=m;a.classList.add('show');}
 function openUser(){['nuName','nuEmail','nuPass'].forEach(i=>$('#'+i).value='');$('#nuRole').value='member';$('#uAlert').classList.remove('show');openModal('mUser');setTimeout(()=>$('#nuName').focus(),50);}
-$('#nuSave').addEventListener('click',()=>{
+$('#nuSave').addEventListener('click',async ()=>{
   $('#uAlert').classList.remove('show');
   const name=$('#nuName').value.trim(), email=$('#nuEmail').value.trim().toLowerCase(), pass=$('#nuPass').value, role=$('#nuRole').value;
   if(!name)return uErr('Escribe el nombre completo.');
   if(!/^[^@\s]+@onepulso\.online$/.test(email))return uErr('El correo debe terminar en '+DOMAIN+'.');
   if(pass.length<6)return uErr('La contraseña debe tener al menos 6 caracteres.');
-  const us=load(K.users,[]);if(us.some(u=>u.email===email))return uErr('Ya existe un usuario con ese correo.');
-  us.push({email,name,pass,role,created:new Date().toISOString().slice(0,10)});
-  save(K.users,us);closeModal('mUser');renderUsers();updateCounts();$('#stTeam').textContent=us.length;toast('Usuario creado · '+name+' ya puede entrar');
+  const btn=$('#nuSave');btn.disabled=true;btn.textContent='Creando…';
+  const {data,error}=await sb.functions.invoke('admin-create-user',{body:{action:'create',email,name,password:pass,role}});
+  btn.disabled=false;btn.textContent='Crear usuario';
+  if(error)return uErr('Error: '+error.message);
+  if(!data.ok)return uErr(data.error||'No se pudo crear el usuario');
+  closeModal('mUser');await loadProfiles();renderUsers();updateCounts();$('#stTeam').textContent=profilesCache.length;toast('Usuario creado · '+name+' ya puede entrar');
 });
 
 /* ----- Modal + misc ----- */
@@ -798,7 +810,10 @@ $('#scrim').addEventListener('click',closeSide);
 let toastT;function toast(m){$('#toastMsg').textContent=m;const el=$('#toast');el.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),2600);}
 
 /* ----- Boot ----- */
-(function(){const s=load(K.session,null);if(s){const u=load(K.users,[]).find(x=>x.email===s.email);if(u){enterApp(u);return;}}$('#email').focus();})();
+(async function(){
+  if(window.sb){ try{ const {data:{session}}=await sb.auth.getSession(); if(session){ await afterAuth(); return; } }catch(_){} }
+  $('#email').focus();
+})();
 </script>
 </body>
 </html>
