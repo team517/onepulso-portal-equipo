@@ -191,12 +191,13 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
 .tsk:active{cursor:grabbing}
 .tsk.dragging{opacity:.45}
 .tsk.done{border-left-color:var(--ok);background:#fbfffc}
-.tsk-top{display:flex;align-items:center;gap:6px;padding-right:16px}
+.tsk-top{display:flex;align-items:center;gap:8px;padding-right:16px}
 .tsk-foot{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
 .tsk-foot:empty{display:none}
 .tsk .who-tag{max-width:100%}
-.tsk .tcb{width:16px;height:16px;border:2px solid var(--line-2);border-radius:5px;display:grid;place-items:center;flex:none;background:#fff}
-.tsk .tcb svg{width:10px;height:10px;color:#fff;opacity:0}
+.tsk .tcb{width:24px;height:24px;border:2px solid var(--line-2);border-radius:7px;display:grid;place-items:center;flex:none;background:#fff;cursor:pointer;transition:.12s}
+.tsk .tcb:hover{border-color:var(--purple);background:var(--purple-xl)}
+.tsk .tcb svg{width:14px;height:14px;color:#fff;opacity:0}
 .tsk.done .tcb{background:var(--ok);border-color:var(--ok)}
 .tsk.done .tcb svg{opacity:1}
 .tsk .tt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
