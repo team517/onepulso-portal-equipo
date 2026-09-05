@@ -412,10 +412,12 @@ textarea.area{height:auto;min-height:80px;padding:10px 14px;resize:vertical;line
       </div>
       <div class="field" id="fDesc"><label>Descripción (qué hay que hacer)</label><textarea class="inp area" id="tDesc" placeholder="Describe la tarea para quien la haga (opcional)…"></textarea></div>
       <div class="field" id="fRepeat" hidden>
-        <label>Repetir cada semana (predeterminada)</label>
-        <div class="wd-row" id="wdRow"><button type="button" class="wd" data-wd="0">L</button><button type="button" class="wd" data-wd="1">M</button><button type="button" class="wd" data-wd="2">X</button><button type="button" class="wd" data-wd="3">J</button><button type="button" class="wd" data-wd="4">V</button><button type="button" class="wd" data-wd="5">S</button><button type="button" class="wd" data-wd="6">D</button></div>
-        <input class="inp" id="tTime" placeholder="Hora (ej. 09:30) — opcional" style="margin-top:9px;max-width:220px">
-        <p class="hint" style="margin-top:8px">Marca los días y se repetirá en ellos para siempre (todos los meses). Si no marcas ninguno, es una tarea de un solo día.</p>
+        <label class="check"><input type="checkbox" id="tRepeatOn"> <b style="font-weight:600">🔁 Repetir cada semana</b> <span class="faint" style="font-weight:400">(si no, es una tarea de un solo día)</span></label>
+        <div id="repeatOpts" hidden style="margin-top:10px">
+          <div class="wd-row" id="wdRow"><button type="button" class="wd" data-wd="0">L</button><button type="button" class="wd" data-wd="1">M</button><button type="button" class="wd" data-wd="2">X</button><button type="button" class="wd" data-wd="3">J</button><button type="button" class="wd" data-wd="4">V</button><button type="button" class="wd" data-wd="5">S</button><button type="button" class="wd" data-wd="6">D</button></div>
+          <input class="inp" id="tTime" placeholder="Hora (ej. 09:30) — opcional" style="margin-top:9px;max-width:220px">
+          <p class="hint" style="margin-top:8px">Se repite en los días marcados, todas las semanas (para siempre).</p>
+        </div>
       </div>
       <div class="field" id="fNote"><label>Recomendación / trabajo realizado</label><textarea class="inp area" id="tNote" placeholder="Escribe una nota o recomendación del trabajo realizado (opcional)…"></textarea></div>
       <div class="field" id="fPhotos"><label>Fotos del trabajo</label>
@@ -529,7 +531,7 @@ function save(k,v){
   if(k===K.notes){ DB.notes=v||''; clearTimeout(notesSaveT); notesSaveT=setTimeout(()=>{ const el=document.getElementById('genNotes'); const txt=el?el.value:DB.notes; DB.notes=txt; kvUpsert('notes',{text:txt}); },600); return; }
   _lsSave(k,v);
 }
-const taskToRow=t=>({id:t.id,title:t.t,date:t.date||null,assignee:t.assignee||null,done:!!t.done,note:t.note||null,details:t.details||null,rec_id:t.rec_id||null,images:t.images||[]});
+const taskToRow=t=>({id:t.id,title:t.t,date:t.date||null,assignee:t.assignee||null,done:!!t.done,note:t.note||null,details:t.details||null,rec_id:t.rec_id||null,creator:t.creator||null,images:t.images||[]});
 const clientToRow=c=>({id:c.id,name:c.name,email:c.email||null,owner:c.owner||null,status:c.status||'on'});
 async function upsertRow(table,row){
   if(!window.sb) return true;
@@ -552,7 +554,7 @@ async function loadAll(){
   if(!window.sb) return;
   try{
     const [tk,cl,kv,rc]=await Promise.all([sb.from('tasks').select('*').order('created_at'),sb.from('clients').select('*').order('created_at'),sb.from('app_kv').select('*'),sb.from('recurring').select('*').order('created_at')]);
-    DB.tasks=(tk.data||[]).map(r=>({id:r.id,t:r.title,date:r.date,assignee:r.assignee||'',done:!!r.done,note:r.note||'',details:r.details||'',rec_id:r.rec_id||null,images:r.images||[]}));
+    DB.tasks=(tk.data||[]).map(r=>({id:r.id,t:r.title,date:r.date,assignee:r.assignee||'',done:!!r.done,note:r.note||'',details:r.details||'',rec_id:r.rec_id||null,creator:r.creator||null,images:r.images||[]}));
     DB.clients=(cl.data||[]).map(r=>({id:r.id,name:r.name,email:r.email||'',owner:r.owner||'',status:r.status||'on'}));
     DB.recurring=(rc.data||[]).map(r=>({id:r.id,title:r.title,time:r.time||'',weekdays:r.weekdays||[],assignee:r.assignee||'',details:r.details||''}));
     const m={};(kv.data||[]).forEach(r=>m[r.k]=r.v); DB.reminders=m.reminders||{}; DB.notes=(m.notes&&m.notes.text)||'';
@@ -701,8 +703,9 @@ function taskIndicators(t){
 function taskChip(t,um){
   const tag=(t.assignee&&um[t.assignee])?whoTag(t.assignee,um):'';
   const canEdit=admin()||(me&&t.assignee===me.email);
+  const canDel=admin()||(me&&t.creator&&t.creator===me.email);
   return '<div class="tsk'+(t.done?' done':'')+'" draggable="'+(canEdit?'true':'false')+'" data-task="'+t.id+'">'
-    +(canEdit?'<button class="tdel" data-del-task="'+t.id+'" title="Quitar tarea">×</button>':'')
+    +(canDel?'<button class="tdel" data-del-task="'+t.id+'" title="Quitar tarea">×</button>':'')
     +'<div class="tsk-top"><button class="tcb" data-toggle="'+t.id+'" title="'+(t.done?'Reabrir':'Marcar terminada')+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 5 5L20 7"/></svg></button><span class="tt">'+esc(t.t)+'</span></div>'
     +'<div class="tsk-foot">'+tag+taskIndicators(t)+'</div></div>';
 }
@@ -727,7 +730,7 @@ function cellInner(dt,tasks,um){
 function materializeRec(recId,iso,done){
   const r=DB.recurring.find(x=>x.id===recId); if(!r)return;
   if(!(admin()||(me&&r.assignee===me.email))){toast('No es tu tarea');return;}
-  const row={id:Date.now(),rec_id:recId,date:iso,t:r.title,details:r.details||'',assignee:r.assignee||'',done:!!done,note:'',images:[]};
+  const row={id:Date.now(),rec_id:recId,date:iso,t:r.title,details:r.details||'',assignee:r.assignee||'',creator:(me?me.email:''),done:!!done,note:'',images:[]};
   DB.tasks.unshift(row); upsertRow('tasks',taskToRow(row));
   renderCalendar();renderTasks();updateCounts();toast('Marcada como hecha ✓');
 }
@@ -779,7 +782,7 @@ calWrap.addEventListener('click',e=>{
   const rmb=e.target.closest('.rem'); if(rmb){e.stopPropagation();editReminder(rmb.dataset.rem);return;}
   const rcd=e.target.closest('[data-recdone]'); if(rcd){e.stopPropagation();materializeRec(+rcd.dataset.recdone, rcd.dataset.recdate, true);return;}
   const rec=e.target.closest('.tsk.rec'); if(rec){openTask(null,{occ:{recId:+rec.dataset.rec, iso:rec.dataset.recdate}});return;}
-  const del=e.target.closest('.tdel'); if(del){e.stopPropagation();if(canEditTask(+del.dataset.delTask))deleteTask(+del.dataset.delTask);return;}
+  const del=e.target.closest('.tdel'); if(del){e.stopPropagation();if(canDeleteTask(+del.dataset.delTask))deleteTask(+del.dataset.delTask);else toast('Solo quien la creó puede eliminarla');return;}
   const tog=e.target.closest('.tcb'); if(tog){e.stopPropagation();const id=+tog.dataset.toggle;if(canEditTask(id))checkTask(id);else toast('Solo puedes cambiar tus propias tareas');return;}
   const tsk=e.target.closest('.tsk'); if(tsk){const id=+tsk.dataset.task;if(canEditTask(id))openTask(id);else toast('Solo el administrador puede editar esta tarea');}
 });
@@ -795,6 +798,7 @@ calWrap.addEventListener('drop',e=>{
 const taskById=id=>load(K.tasks,[]).find(t=>t.id===id);
 async function deleteTask(id){ if(!(await removeRow('tasks',id))) return; DB.tasks=DB.tasks.filter(t=>t.id!==id); renderCalendar();renderTasks();updateCounts();toast('Tarea eliminada'); }
 function canEditTask(id){const t=taskById(id);return !!t&&(admin()||(me&&t.assignee===me.email));}
+function canDeleteTask(id){const t=taskById(id);return !!t&&(admin()||(me&&t.creator&&t.creator===me.email));}
 function editReminder(iso){if(!admin())return;const all=load(K.reminders,{});const cur=all[iso]||'';const v=prompt('Recordatorio para el '+fmtDate(iso)+':',cur);if(v===null)return;if(v.trim()==='')delete all[iso];else all[iso]=v.trim();save(K.reminders,all);renderCalendar();}
 function reopenTask(id){const tasks=load(K.tasks,[]),t=tasks.find(x=>x.id===id);if(!t)return;t.done=false;save(K.tasks,tasks);updateRow('tasks',id,{done:false});renderCalendar();renderTasks();updateCounts();toast('Tarea reabierta');}
 function checkTask(id){const t=taskById(id);if(!t)return;if(t.done)reopenTask(id);else openTask(id,{complete:true});}
@@ -827,19 +831,20 @@ function setModalMode(recurring,isAdmin){
   $('#fNotify').hidden=recurring||!isAdmin;
 }
 $('#wdRow').addEventListener('click',e=>{const b=e.target.closest('.wd');if(b)b.classList.toggle('on');});
+$('#tRepeatOn').addEventListener('change',()=>{const on=$('#tRepeatOn').checked;$('#repeatOpts').hidden=!on;$('#fDate').hidden=on;});
 function openTask(id,opt){
   opt=opt||{};
   const preset=typeof opt==='string'?opt:opt.date, complete=opt.complete, recId=opt.rec, occ=opt.occ;
   const isAdmin=admin();
   editingTask=null; editingRecurring=null; occurrence=null; draftImages=[];
-  setWeekdays([]); $('#tTime').value='';
+  setWeekdays([]); $('#tTime').value=''; $('#tRepeatOn').checked=false; $('#repeatOpts').hidden=true;
   if(recId!=null){
     if(!isAdmin){toast('Solo el administrador');return;}
     const r=DB.recurring.find(x=>x.id===recId); if(!r){toast('Ya no existe');return;}
     editingRecurring=recId;
     $('#tTitle').value=r.title; $('#tDesc').value=r.details||''; $('#tTime').value=r.time||''; setWeekdays(r.weekdays||[]);
     optionsForUsers($('#tAssignee'), r.assignee||'','Sin asignar');
-    setModalMode(true,isAdmin); $('#fRepeat').hidden=false;
+    setModalMode(true,isAdmin); $('#fRepeat').hidden=false; $('#tRepeatOn').checked=true; $('#repeatOpts').hidden=false;
     $('#tModalTitle').textContent='Tarea recurrente'; $('#tDelete').hidden=false;
     renderThumbs(); openModal('mTask'); setTimeout(()=>$('#tTitle').focus(),50); return;
   }
@@ -860,7 +865,7 @@ function openTask(id,opt){
     $('#tTitle').value=t.t;$('#tDate').value=t.date||isoOf(TODAY);$('#tDesc').value=t.details||'';optionsForUsers($('#tAssignee'),null,'Sin asignar');$('#tAssignee').value=t.assignee||'';$('#tNote').value=t.note||'';draftImages=(t.images||[]).slice();$('#tDone').checked=complete?true:!!t.done;
     setModalMode(false,isAdmin); $('#fRepeat').hidden=true;
     if(!isAdmin){ $('#tTitle').readOnly=true; $('#tDate').readOnly=true; $('#tDesc').readOnly=true; }
-    $('#tModalTitle').textContent=complete?'Completar tarea':'Editar tarea';$('#tDelete').hidden=false;
+    $('#tModalTitle').textContent=complete?'Completar tarea':'Editar tarea';$('#tDelete').hidden=!canDeleteTask(id);
   } else {
     $('#tTitle').value='';$('#tDate').value=preset||isoOf(TODAY);$('#tDesc').value='';optionsForUsers($('#tAssignee'),me?me.email:'','Sin asignar');$('#tNote').value='';$('#tDone').checked=false;
     setModalMode(false,isAdmin); $('#fRepeat').hidden=!isAdmin;
@@ -877,14 +882,14 @@ $('#tSave').addEventListener('click',()=>{
   if(occurrence){
     const r=DB.recurring.find(x=>x.id===occurrence.recId)||{};
     if(!(isAdmin||(me&&r.assignee===me.email))){toast('No es tu tarea');return;}
-    const row={id:Date.now(),rec_id:occurrence.recId,date:occurrence.iso,t:r.title||title,details:r.details||'',assignee:r.assignee||(me?me.email:''),done:$('#tDone').checked,note:$('#tNote').value.trim(),images:draftImages.slice()};
+    const row={id:Date.now(),rec_id:occurrence.recId,date:occurrence.iso,t:r.title||title,details:r.details||'',assignee:r.assignee||(me?me.email:''),creator:(me?me.email:''),done:$('#tDone').checked,note:$('#tNote').value.trim(),images:draftImages.slice()};
     DB.tasks.unshift(row); upsertRow('tasks',taskToRow(row));
     closeModal('mTask');renderCalendar();renderTasks();updateCounts();toast('Guardada ✓');
     return;
   }
-  if(editingRecurring!=null || (!editingTask && isAdmin && getWeekdays().length)){
+  if(editingRecurring!=null || (!editingTask && isAdmin && $('#tRepeatOn').checked)){
     if(!isAdmin){toast('Solo el administrador');return;}
-    const wds=getWeekdays(); if(!wds.length){toast('Marca al menos un día para repetir');return;}
+    const wds=getWeekdays(); if(!wds.length){toast('Marca al menos un día de la semana');return;}
     const rid=editingRecurring!=null?editingRecurring:Date.now();
     const time=$('#tTime').value.trim(), asg=$('#tAssignee').value||'', det=$('#tDesc').value.trim();
     DB.recurring=DB.recurring.filter(x=>x.id!==rid); DB.recurring.push({id:rid,title,time,weekdays:wds,assignee:asg,details:det});
@@ -898,7 +903,7 @@ $('#tSave').addEventListener('click',()=>{
   const patch={t:title,date:$('#tDate').value||isoOf(TODAY),assignee:assignee,done:$('#tDone').checked,note:$('#tNote').value.trim(),details:$('#tDesc').value.trim(),images:draftImages.slice()};
   const tasks=load(K.tasks,[]); let row;
   if(editingTask){row=tasks.find(x=>x.id===editingTask);if(!row){toast('Esa tarea ya no existe');closeModal('mTask');return;}Object.assign(row,patch);}
-  else {row=Object.assign({id:Date.now()},patch);tasks.unshift(row);}
+  else {row=Object.assign({id:Date.now(),creator:(me?me.email:'')},patch);tasks.unshift(row);}
   save(K.tasks,tasks); upsertRow('tasks',taskToRow(row));
   closeModal('mTask');renderCalendar();renderTasks();updateCounts();
   toast(patch.done?'Tarea terminada ✓':(editingTask?'Tarea actualizada':'Tarea creada'));
