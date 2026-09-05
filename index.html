@@ -281,8 +281,7 @@ textarea.area{height:auto;min-height:80px;padding:10px 14px;resize:vertical;line
   </aside>
   <section class="auth__panel">
     <form class="loginCard" id="loginForm" novalidate>
-      <h2>Iniciar sesión</h2>
-      <p class="sub">Solo cuentas <b>@onepulso.online</b>.</p>
+      <h2 style="margin-bottom:24px">Iniciar sesión</h2>
       <div class="alert" id="alert"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg><span id="alertMsg"></span></div>
       <div class="field" id="fEmail"><label for="email">Correo de empresa</label>
         <input class="inp" id="email" type="email" placeholder="nombre@onepulso.online" autocomplete="username" spellcheck="false"></div>
@@ -450,14 +449,6 @@ window.sb = null;
       console.log('[Supabase] sin configurar (modo local/demo)');
     }
   }catch(e){ console.warn('[Supabase] init error:', e.message); }
-  var foot = document.querySelector('.loginCard .foot');
-  if(foot){
-    var on = !!window.sb;
-    var b = document.createElement('div');
-    b.style.cssText = 'margin-top:12px;font-size:11.5px;color:var(--faint);display:flex;align-items:center;justify-content:center;gap:7px';
-    b.innerHTML = '<span style="width:7px;height:7px;border-radius:50%;display:inline-block;background:'+(on?'#12b76a':'#c8c6d0')+'"></span>'+(on?'Base de datos conectada (Supabase)':'Modo local (demo) · Supabase sin configurar');
-    foot.parentNode.appendChild(b);
-  }
 })();
 </script>
 
