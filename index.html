@@ -135,6 +135,12 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
 .notes-area{width:100%;min-height:72px}
 .notes-card.ro .notes-area{background:var(--surface);cursor:default}
 .smtp-tag{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#0a7d47;background:#e4f7ee;border:1px solid #bfe9cf;padding:5px 11px;border-radius:20px;white-space:nowrap}
+.wd-row{display:flex;gap:6px;flex-wrap:wrap}
+.wd{width:34px;height:34px;border-radius:9px;border:1px solid var(--line-2);background:#fff;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer}
+.wd:hover{border-color:var(--purple)}
+.wd.on{background:var(--purple);color:#fff;border-color:var(--purple)}
+.tsk.rec{border-left-color:#0088b0;background:#f2fbff}
+.tsk.rec .rec-ic{font-size:12px}
 
 /* week */
 .wk{display:grid;grid-template-columns:repeat(7,minmax(120px,1fr));border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff}
@@ -401,16 +407,22 @@ textarea.area{height:auto;min-height:80px;padding:10px 14px;resize:vertical;line
     <div class="b">
       <div class="field"><label>Tarea</label><input class="inp" id="tTitle" placeholder="Ej. Llamar a Grupo Adwake"></div>
       <div class="grid2">
-        <div class="field"><label>Fecha</label><input class="inp" id="tDate" type="date"></div>
+        <div class="field" id="fDate"><label>Fecha</label><input class="inp" id="tDate" type="date"></div>
         <div class="field" id="fAssignee"><label>Asignar a</label><select class="inp" id="tAssignee"></select></div>
       </div>
-      <div class="field"><label>Recomendación / trabajo realizado</label><textarea class="inp area" id="tNote" placeholder="Escribe una nota o recomendación del trabajo realizado (opcional)…"></textarea></div>
-      <div class="field"><label>Fotos del trabajo</label>
+      <div class="field" id="fRepeat" hidden>
+        <label>Repetir cada semana (predeterminada)</label>
+        <div class="wd-row" id="wdRow"><button type="button" class="wd" data-wd="0">L</button><button type="button" class="wd" data-wd="1">M</button><button type="button" class="wd" data-wd="2">X</button><button type="button" class="wd" data-wd="3">J</button><button type="button" class="wd" data-wd="4">V</button><button type="button" class="wd" data-wd="5">S</button><button type="button" class="wd" data-wd="6">D</button></div>
+        <input class="inp" id="tTime" placeholder="Hora (ej. 09:30) — opcional" style="margin-top:9px;max-width:220px">
+        <p class="hint" style="margin-top:8px">Marca los días y se repetirá en ellos para siempre (todos los meses). Si no marcas ninguno, es una tarea de un solo día.</p>
+      </div>
+      <div class="field" id="fNote"><label>Recomendación / trabajo realizado</label><textarea class="inp area" id="tNote" placeholder="Escribe una nota o recomendación del trabajo realizado (opcional)…"></textarea></div>
+      <div class="field" id="fPhotos"><label>Fotos del trabajo</label>
         <label class="uploader"><input type="file" id="tImgInput" accept="image/*" multiple hidden><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> Añadir fotos</label>
         <div class="thumbs" id="tThumbs" style="margin-top:10px"></div>
       </div>
       <label class="check" id="fNotify" style="margin-bottom:14px"><input type="checkbox" id="tNotify" checked> Avisar por email al responsable</label>
-      <label class="check"><input type="checkbox" id="tDone"> <b style="font-weight:600">Marcar como terminada</b></label>
+      <label class="check" id="fDone"><input type="checkbox" id="tDone"> <b style="font-weight:600">Marcar como terminada</b></label>
     </div>
     <div class="f"><button class="btn btn-danger btn-sm" id="tDelete" hidden>Eliminar</button><button class="btn btn-ghost btn-sm push" data-close>Cancelar</button><button class="btn btn-primary btn-sm" id="tSave">Guardar</button></div>
   </div>
@@ -496,7 +508,7 @@ const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const DOMAIN='@onepulso.online';
 const K={users:'op_users',session:'op_session',tasks:'op_tasks',clients:'op_clients',events:'op_events',reminders:'op_reminders',notes:'op_notes'};
 /* ===== Datos compartidos en Supabase (con caché en memoria) ===== */
-const DB={tasks:[],clients:[],reminders:{},notes:''};
+const DB={tasks:[],clients:[],reminders:{},notes:'',recurring:[]};
 const _lsLoad=(k,f)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):f;}catch(e){return f;}};
 const _lsSave=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}};
 function load(k,f){
@@ -538,9 +550,10 @@ function kvUpsert(k,v){ if(!window.sb)return; (async()=>{try{const {error}=await
 async function loadAll(){
   if(!window.sb) return;
   try{
-    const [tk,cl,kv]=await Promise.all([sb.from('tasks').select('*').order('created_at'),sb.from('clients').select('*').order('created_at'),sb.from('app_kv').select('*')]);
+    const [tk,cl,kv,rc]=await Promise.all([sb.from('tasks').select('*').order('created_at'),sb.from('clients').select('*').order('created_at'),sb.from('app_kv').select('*'),sb.from('recurring').select('*').order('created_at')]);
     DB.tasks=(tk.data||[]).map(r=>({id:r.id,t:r.title,date:r.date,assignee:r.assignee||'',done:!!r.done,note:r.note||'',images:r.images||[]}));
     DB.clients=(cl.data||[]).map(r=>({id:r.id,name:r.name,email:r.email||'',owner:r.owner||'',status:r.status||'on'}));
+    DB.recurring=(rc.data||[]).map(r=>({id:r.id,title:r.title,time:r.time||'',weekdays:r.weekdays||[],assignee:r.assignee||''}));
     const m={};(kv.data||[]).forEach(r=>m[r.k]=r.v); DB.reminders=m.reminders||{}; DB.notes=(m.notes&&m.notes.text)||'';
   }catch(e){console.warn('loadAll',e);}
 }
@@ -552,6 +565,7 @@ function subscribeRealtime(){
     .on('postgres_changes',{event:'*',schema:'public',table:'tasks'},scheduleRefresh)
     .on('postgres_changes',{event:'*',schema:'public',table:'clients'},scheduleRefresh)
     .on('postgres_changes',{event:'*',schema:'public',table:'app_kv'},scheduleRefresh)
+    .on('postgres_changes',{event:'*',schema:'public',table:'recurring'},scheduleRefresh)
     .subscribe();
 }
 function scheduleRefresh(){clearTimeout(refreshT);refreshT=setTimeout(async()=>{await loadAll();rerender();},350);}
@@ -689,9 +703,18 @@ function taskChip(t,um){
     +'<div class="tsk-top"><button class="tcb" data-toggle="'+t.id+'" title="'+(t.done?'Reabrir':'Marcar terminada')+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 5 5L20 7"/></svg></button><span class="tt">'+esc(t.t)+'</span></div>'
     +'<div class="tsk-foot">'+tag+taskIndicators(t)+'</div></div>';
 }
+function recChip(r,um){
+  const tag=(r.assignee&&um[r.assignee])?whoTag(r.assignee,um):'';
+  const tm=r.time?('<b>'+esc(r.time)+'</b> '):'';
+  return '<div class="tsk rec" data-rec="'+r.id+'" title="Tarea recurrente (predeterminada)">'
+    +(admin()?'<button class="tdel" data-del-rec="'+r.id+'" title="Quitar recurrente">×</button>':'')
+    +'<div class="tsk-top"><span class="rec-ic">🔁</span><span class="tt">'+tm+esc(r.title)+'</span></div>'
+    +(tag?'<div class="tsk-foot">'+tag+'</div>':'')+'</div>';
+}
 function cellInner(dt,tasks,um){
-  const iso=isoOf(dt);
+  const iso=isoOf(dt), wd=(dt.getDay()+6)%7;
   let h='';
+  DB.recurring.filter(r=>(r.weekdays||[]).includes(wd)).forEach(r=>h+=recChip(r,um));
   tasks.filter(t=>t.date===iso).forEach(t=>h+=taskChip(t,um));
   h+='<button class="addbtn" data-add="'+iso+'">+ tarea</button>';
   return h;
@@ -742,11 +765,13 @@ const calWrap=$('#calWrap');
 calWrap.addEventListener('click',e=>{
   const add=e.target.closest('.addbtn'); if(add){openTask(null,add.dataset.add);return;}
   const rmb=e.target.closest('.rem'); if(rmb){e.stopPropagation();editReminder(rmb.dataset.rem);return;}
+  const rdel=e.target.closest('[data-del-rec]'); if(rdel){e.stopPropagation();if(admin()){const rid=+rdel.dataset.delRec;DB.recurring=DB.recurring.filter(x=>x.id!==rid);removeRow('recurring',rid);renderCalendar();toast('Recurrente eliminada');}return;}
+  const rec=e.target.closest('.tsk.rec'); if(rec){if(admin())openTask(null,{rec:+rec.dataset.rec});else toast('Solo el administrador puede editar esto');return;}
   const del=e.target.closest('.tdel'); if(del){e.stopPropagation();if(canEditTask(+del.dataset.delTask))deleteTask(+del.dataset.delTask);return;}
   const tog=e.target.closest('.tcb'); if(tog){e.stopPropagation();const id=+tog.dataset.toggle;if(canEditTask(id))checkTask(id);else toast('Solo puedes cambiar tus propias tareas');return;}
   const tsk=e.target.closest('.tsk'); if(tsk){const id=+tsk.dataset.task;if(canEditTask(id))openTask(id);else toast('Solo el administrador puede editar esta tarea');}
 });
-calWrap.addEventListener('dragstart',e=>{const el=e.target.closest('.tsk');if(!el)return;e.dataTransfer.setData('text/plain',el.dataset.task);e.dataTransfer.effectAllowed='move';el.classList.add('dragging');});
+calWrap.addEventListener('dragstart',e=>{const el=e.target.closest('.tsk');if(!el||el.classList.contains('rec'))return;e.dataTransfer.setData('text/plain',el.dataset.task);e.dataTransfer.effectAllowed='move';el.classList.add('dragging');});
 calWrap.addEventListener('dragend',e=>{const el=e.target.closest('.tsk');if(el)el.classList.remove('dragging');});
 calWrap.addEventListener('dragover',e=>{const cell=e.target.closest('[data-date]');if(!cell)return;e.preventDefault();e.dataTransfer.dropEffect='move';cell.classList.add('dragover');});
 calWrap.addEventListener('dragleave',e=>{const cell=e.target.closest('[data-date]');if(cell&&!cell.contains(e.relatedTarget))cell.classList.remove('dragover');});
@@ -780,23 +805,62 @@ $('#tImgInput').addEventListener('change',async e=>{
 });
 $('#tThumbs').addEventListener('click',e=>{const b=e.target.closest('[data-thumb]');if(!b)return;draftImages.splice(+b.dataset.thumb,1);renderThumbs();});
 
+let editingRecurring=null;
+function setWeekdays(arr){$$('#wdRow .wd').forEach(b=>b.classList.toggle('on',(arr||[]).includes(+b.dataset.wd)));}
+function getWeekdays(){return $$('#wdRow .wd.on').map(b=>+b.dataset.wd).sort((a,b)=>a-b);}
+function setModalMode(recurring,isAdmin){
+  $('#fAssignee').hidden=!isAdmin; $('#tAssignee').disabled=!isAdmin;
+  $('#fDate').hidden=recurring; $('#fNote').hidden=recurring; $('#fPhotos').hidden=recurring; $('#fDone').hidden=recurring;
+  $('#fNotify').hidden=recurring||!isAdmin;
+}
+$('#wdRow').addEventListener('click',e=>{const b=e.target.closest('.wd');if(b)b.classList.toggle('on');});
 function openTask(id,opt){
-  const preset=typeof opt==='string'?opt:(opt&&opt.date), complete=opt&&opt.complete;
-  if(id&&!canEditTask(id)){toast('Solo el administrador puede editar esta tarea');return;}
+  opt=opt||{};
+  const preset=typeof opt==='string'?opt:opt.date, complete=opt.complete, recId=opt.rec;
   const isAdmin=admin();
-  optionsForUsers($('#tAssignee'), id?null:(me?me.email:''),'Sin asignar');
-  $('#fAssignee').hidden=!isAdmin; $('#tAssignee').disabled=!isAdmin; $('#fNotify').hidden=!isAdmin;
-  draftImages=[];
-  if(id){const t=taskById(id);editingTask=id;$('#tTitle').value=t.t;$('#tDate').value=t.date||isoOf(TODAY);$('#tAssignee').value=t.assignee||'';$('#tNote').value=t.note||'';draftImages=(t.images||[]).slice();$('#tDone').checked=complete?true:!!t.done;$('#tModalTitle').textContent=complete?'Completar tarea':'Editar tarea';$('#tDelete').hidden=false;}
-  else{editingTask=null;$('#tTitle').value='';$('#tDate').value=preset||isoOf(TODAY);$('#tAssignee').value=me?me.email:'';$('#tNote').value='';$('#tDone').checked=false;$('#tModalTitle').textContent='Nueva tarea';$('#tDelete').hidden=true;}
+  editingTask=null; editingRecurring=null; draftImages=[];
+  setWeekdays([]); $('#tTime').value='';
+  if(recId!=null){
+    if(!isAdmin){toast('Solo el administrador');return;}
+    const r=DB.recurring.find(x=>x.id===recId); if(!r){toast('Ya no existe');return;}
+    editingRecurring=recId;
+    $('#tTitle').value=r.title; $('#tTime').value=r.time||''; setWeekdays(r.weekdays||[]);
+    optionsForUsers($('#tAssignee'), r.assignee||'','Sin asignar');
+    setModalMode(true,isAdmin); $('#fRepeat').hidden=false;
+    $('#tModalTitle').textContent='Tarea recurrente'; $('#tDelete').hidden=false;
+    renderThumbs(); openModal('mTask'); setTimeout(()=>$('#tTitle').focus(),50); return;
+  }
+  if(id){
+    if(!canEditTask(id)){toast('Solo el administrador puede editar esta tarea');return;}
+    const t=taskById(id);editingTask=id;
+    $('#tTitle').value=t.t;$('#tDate').value=t.date||isoOf(TODAY);optionsForUsers($('#tAssignee'),null,'Sin asignar');$('#tAssignee').value=t.assignee||'';$('#tNote').value=t.note||'';draftImages=(t.images||[]).slice();$('#tDone').checked=complete?true:!!t.done;
+    setModalMode(false,isAdmin); $('#fRepeat').hidden=true;
+    $('#tModalTitle').textContent=complete?'Completar tarea':'Editar tarea';$('#tDelete').hidden=false;
+  } else {
+    $('#tTitle').value='';$('#tDate').value=preset||isoOf(TODAY);optionsForUsers($('#tAssignee'),me?me.email:'','Sin asignar');$('#tNote').value='';$('#tDone').checked=false;
+    setModalMode(false,isAdmin); $('#fRepeat').hidden=!isAdmin;
+    $('#tModalTitle').textContent='Nueva tarea';$('#tDelete').hidden=true;
+  }
+  if(!isAdmin)$('#tAssignee').value=me?me.email:'';
   renderThumbs();
   openModal('mTask');setTimeout(()=>$(complete?'#tNote':'#tTitle').focus(),50);
 }
 $('#tSave').addEventListener('click',()=>{
   const title=$('#tTitle').value.trim();if(!title){$('#tTitle').focus();return;}
+  const isAdmin=admin();
+  if(editingRecurring!=null || (!editingTask && isAdmin && getWeekdays().length)){
+    if(!isAdmin){toast('Solo el administrador');return;}
+    const wds=getWeekdays(); if(!wds.length){toast('Marca al menos un día para repetir');return;}
+    const rid=editingRecurring!=null?editingRecurring:Date.now();
+    const time=$('#tTime').value.trim(), asg=$('#tAssignee').value||'';
+    DB.recurring=DB.recurring.filter(x=>x.id!==rid); DB.recurring.push({id:rid,title,time,weekdays:wds,assignee:asg});
+    upsertRow('recurring',{id:rid,title,time:time||null,weekdays:wds,assignee:asg||null});
+    closeModal('mTask');renderCalendar();toast(editingRecurring!=null?'Recurrente actualizada':'Tarea recurrente creada ✓');
+    return;
+  }
   if(editingTask&&!canEditTask(editingTask)){toast('Sin permiso');return;}
-  const assignee=admin()?$('#tAssignee').value:(me?me.email:'');
-  const notify=admin()&&$('#tNotify').checked&&assignee&&assignee!==(me?me.email:'');
+  const assignee=isAdmin?$('#tAssignee').value:(me?me.email:'');
+  const notify=isAdmin&&$('#tNotify').checked&&assignee&&assignee!==(me?me.email:'');
   const patch={t:title,date:$('#tDate').value||isoOf(TODAY),assignee:assignee,done:$('#tDone').checked,note:$('#tNote').value.trim(),images:draftImages.slice()};
   const tasks=load(K.tasks,[]); let row;
   if(editingTask){row=tasks.find(x=>x.id===editingTask);if(!row){toast('Esa tarea ya no existe');closeModal('mTask');return;}Object.assign(row,patch);}
@@ -806,7 +870,7 @@ $('#tSave').addEventListener('click',()=>{
   toast(patch.done?'Tarea terminada ✓':(editingTask?'Tarea actualizada':'Tarea creada'));
   if(notify&&window.sb){ sb.functions.invoke('notify-task',{body:{to:assignee,title:patch.t,date:patch.date,note:patch.note}}).then(r=>{ if(r.error||(r.data&&!r.data.ok)) toast('Guardada, pero el aviso por email no salió'); else toast('📧 Aviso enviado a '+assignee); }).catch(()=>toast('Guardada (el aviso por email falló)')); }
 });
-$('#tDelete').addEventListener('click',()=>{deleteTask(editingTask);closeModal('mTask');});
+$('#tDelete').addEventListener('click',()=>{ if(editingRecurring!=null){const rid=editingRecurring;DB.recurring=DB.recurring.filter(x=>x.id!==rid);removeRow('recurring',rid);closeModal('mTask');renderCalendar();toast('Recurrente eliminada');return;} deleteTask(editingTask);closeModal('mTask'); });
 
 /* ----- Tareas view ----- */
 let taskFilter='mias';
