@@ -501,7 +501,7 @@ function seed(){
     {id:112,date:'2026-09-23',t:'09:30 · Standup'},
     {id:113,date:'2026-09-25',t:'15:00 · Demo Ridge',c:'alt'}
   ]);
-  if(!localStorage.getItem(K.users)) save(K.users,[{email:'team@onepulso.online',name:'Equipo OnePulso',pass:'Xarifa229%',role:'admin',created:'2026-09-01'}]);
+  // usuarios: la autenticación es de Supabase (no se guardan en el navegador)
   if(!localStorage.getItem(K.tasks)) save(K.tasks,[
     {id:1,t:'Revisar respuestas de la campaña Vitalis',date:'2026-09-04',assignee:'team@onepulso.online',done:false},
     {id:2,t:'Preparar informe semanal del equipo',date:'2026-09-05',assignee:'team@onepulso.online',done:false},
@@ -517,8 +517,7 @@ function seed(){
   ]);
 }
 seed();
-/* migración: si la contraseña del admin sigue siendo la vieja por defecto, actualizarla */
-(function(){var us=load(K.users,[]);var t=us.find(u=>u.email==='team@onepulso.online');if(t&&t.pass==='onepulso'){t.pass='Xarifa229%';save(K.users,us);}})();
+/* usuarios y contraseñas: gestionados por Supabase Auth */
 
 /* users helpers */
 let profilesCache=[];
@@ -540,7 +539,7 @@ let me=null;
 /* ============ LOGIN ============ */
 $('#year').textContent=new Date().getFullYear();
 $('#heroDate').textContent=TODAY.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-$('#stTeam').textContent=load(K.users,[]).length;
+/* stTeam: número informativo del hero (se rellena tras iniciar sesión) */
 $('#stTasks').textContent=load(K.tasks,[]).filter(t=>!t.done).length;
 
 $('#pwToggle').addEventListener('click',()=>{
