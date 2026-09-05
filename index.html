@@ -130,6 +130,10 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
 .cal-head h2{font-size:clamp(28px,3.2vw,42px);font-weight:300;letter-spacing:-.02em;text-transform:capitalize}
 .cal-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 #calWrap{overflow-x:auto}
+.notes-card{margin-bottom:18px;padding:14px 16px}
+.notes-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font-size:14px}
+.notes-area{width:100%;min-height:72px}
+.notes-card.ro .notes-area{background:var(--surface);cursor:default}
 
 /* week */
 .wk{display:grid;grid-template-columns:repeat(7,minmax(120px,1fr));border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff}
@@ -345,6 +349,10 @@ textarea.area{height:auto;min-height:80px;padding:10px 14px;resize:vertical;line
           </div>
         </div>
       </div>
+      <div class="card notes-card" id="notesCard">
+        <div class="notes-h"><b>📝 Apuntes generales</b><span class="faint" id="notesStatus"></span></div>
+        <textarea id="genNotes" class="area notes-area" placeholder="Apunta aquí cosas generales del equipo… (se guarda solo)"></textarea>
+      </div>
       <div id="calWrap"></div>
     </div>
 
@@ -467,7 +475,7 @@ window.sb = null;
 <script>
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const DOMAIN='@onepulso.online';
-const K={users:'op_users',session:'op_session',tasks:'op_tasks',clients:'op_clients',events:'op_events',reminders:'op_reminders'};
+const K={users:'op_users',session:'op_session',tasks:'op_tasks',clients:'op_clients',events:'op_events',reminders:'op_reminders',notes:'op_notes'};
 const load=(k,f)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):f;}catch(e){return f;}};
 const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}};
 const initials=s=>String(s).trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase()||'U';
@@ -592,7 +600,10 @@ function go(view){
 $$('.nav-item').forEach(n=>n.addEventListener('click',()=>go(n.dataset.view)));
 
 /* ============ RENDER ============ */
-function renderAll(){renderCalendar();renderTasks();renderClients();renderUsers();updateCounts();}
+function renderAll(){renderCalendar();renderTasks();renderClients();renderUsers();renderNotes();updateCounts();}
+let notesT;
+function renderNotes(){const el=$('#genNotes');if(!el)return;el.value=load(K.notes,'')||'';el.readOnly=!admin();$('#notesCard').classList.toggle('ro',!admin());$('#notesStatus').textContent=admin()?'':'(solo lectura)';}
+$('#genNotes').addEventListener('input',()=>{if(!admin())return;save(K.notes,$('#genNotes').value);$('#notesStatus').textContent='Guardado ✓';clearTimeout(notesT);notesT=setTimeout(()=>{$('#notesStatus').textContent='';},1500);});
 function updateCounts(){
   $('#cTasks').textContent=load(K.tasks,[]).filter(t=>!t.done&&me&&t.assignee===me.email).length;
   $('#cClients').textContent=load(K.clients,[]).length;
