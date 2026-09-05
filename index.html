@@ -587,7 +587,7 @@ const MONTHS=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto',
 const DOW3=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
 const DAYS=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 function fmtDate(iso){if(!iso)return 'Sin fecha';const[y,m,d]=iso.split('-').map(Number);return DAYS[new Date(y,m-1,d).getDay()]+' '+d+' '+MONTHS[m-1].slice(0,3).toLowerCase();}
-const TODAY=new Date();
+let TODAY=new Date();
 
 /* meetings */
 /* Las reuniones viven en localStorage (op_events) para poder borrarlas — se siembran en seed() */
@@ -656,7 +656,8 @@ function enterApp(u){
   $('#login').hidden=true;$('#app').hidden=false;
   $('#uName').textContent=u.name;$('#uEmail').textContent=u.email;$('#uAv').textContent=initials(u.name);$('#uAv').style.background=colorFor(u.name);
   const admin=u.role==='admin';$('#adminLbl').hidden=!admin;$('#navUsers').hidden=!admin;$('#smtpBtn').hidden=!admin;loadSmtpTag();
-  calView='semana';calDate=new Date(TODAY);
+  TODAY=new Date(); calView='semana'; calDate=new Date(TODAY);
+  $('#segWeek').classList.add('on'); $('#segMonth').classList.remove('on');
   renderAll();go('calendario');toast('Sesión iniciada · '+u.name);
 }
 $('#logout').addEventListener('click',async ()=>{try{if(window.sb)await sb.auth.signOut();}catch(_){}me=null;profilesCache=[];$('#app').hidden=true;$('#login').hidden=false;$('#loginForm').reset();loginClear();$('#email').focus();});
@@ -767,7 +768,7 @@ function renderCalendar(){
 }
 $('#segWeek').addEventListener('click',()=>{calView='semana';$('#segWeek').classList.add('on');$('#segMonth').classList.remove('on');renderCalendar();});
 $('#segMonth').addEventListener('click',()=>{calView='mes';$('#segMonth').classList.add('on');$('#segWeek').classList.remove('on');renderCalendar();});
-$('#calToday').addEventListener('click',()=>{calDate=new Date(TODAY);renderCalendar();});
+$('#calToday').addEventListener('click',()=>{TODAY=new Date();calView='semana';$('#segWeek').classList.add('on');$('#segMonth').classList.remove('on');calDate=new Date(TODAY);renderCalendar();});
 $('#calPrev').addEventListener('click',()=>{if(calView==='semana')calDate.setDate(calDate.getDate()-7);else{calDate.setDate(1);calDate.setMonth(calDate.getMonth()-1);}renderCalendar();});
 $('#calNext').addEventListener('click',()=>{if(calView==='semana')calDate.setDate(calDate.getDate()+7);else{calDate.setDate(1);calDate.setMonth(calDate.getMonth()+1);}renderCalendar();});
 
