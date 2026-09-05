@@ -408,6 +408,7 @@ textarea.area{height:auto;min-height:80px;padding:10px 14px;resize:vertical;line
         <label class="uploader"><input type="file" id="tImgInput" accept="image/*" multiple hidden><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> Añadir fotos</label>
         <div class="thumbs" id="tThumbs" style="margin-top:10px"></div>
       </div>
+      <label class="check" id="fNotify" style="margin-bottom:14px"><input type="checkbox" id="tNotify" checked> Avisar por email al responsable</label>
       <label class="check"><input type="checkbox" id="tDone"> <b style="font-weight:600">Marcar como terminada</b></label>
     </div>
     <div class="f"><button class="btn btn-danger btn-sm" id="tDelete" hidden>Eliminar</button><button class="btn btn-ghost btn-sm push" data-close>Cancelar</button><button class="btn btn-primary btn-sm" id="tSave">Guardar</button></div>
@@ -723,7 +724,7 @@ function openTask(id,opt){
   if(id&&!canEditTask(id)){toast('Solo el administrador puede editar esta tarea');return;}
   const isAdmin=admin();
   optionsForUsers($('#tAssignee'), id?null:(me?me.email:''),'Sin asignar');
-  $('#fAssignee').hidden=!isAdmin; $('#tAssignee').disabled=!isAdmin;
+  $('#fAssignee').hidden=!isAdmin; $('#tAssignee').disabled=!isAdmin; $('#fNotify').hidden=!isAdmin;
   draftImages=[];
   if(id){const t=taskById(id);editingTask=id;$('#tTitle').value=t.t;$('#tDate').value=t.date||isoOf(TODAY);$('#tAssignee').value=t.assignee||'';$('#tNote').value=t.note||'';draftImages=(t.images||[]).slice();$('#tDone').checked=complete?true:!!t.done;$('#tModalTitle').textContent=complete?'Completar tarea':'Editar tarea';$('#tDelete').hidden=false;}
   else{editingTask=null;$('#tTitle').value='';$('#tDate').value=preset||isoOf(TODAY);$('#tAssignee').value=me?me.email:'';$('#tNote').value='';$('#tDone').checked=false;$('#tModalTitle').textContent='Nueva tarea';$('#tDelete').hidden=true;}
@@ -734,6 +735,7 @@ $('#tSave').addEventListener('click',()=>{
   const title=$('#tTitle').value.trim();if(!title){$('#tTitle').focus();return;}
   if(editingTask&&!canEditTask(editingTask)){toast('Sin permiso');return;}
   const assignee=admin()?$('#tAssignee').value:(me?me.email:'');
+  const notify=admin()&&$('#tNotify').checked&&assignee&&assignee!==(me?me.email:'');
   const patch={t:title,date:$('#tDate').value||isoOf(TODAY),assignee:assignee,done:$('#tDone').checked,note:$('#tNote').value.trim(),images:draftImages.slice()};
   const tasks=load(K.tasks,[]);
   if(editingTask){const t=tasks.find(x=>x.id===editingTask);Object.assign(t,patch);}
@@ -742,6 +744,7 @@ $('#tSave').addEventListener('click',()=>{
   catch(err){toast('No se pudieron guardar las fotos (demasiado pesadas). Prueba con menos.');return;}
   closeModal('mTask');renderCalendar();renderTasks();updateCounts();
   toast(patch.done?'Tarea terminada ✓':(editingTask?'Tarea actualizada':'Tarea creada'));
+  if(notify&&window.sb){ sb.functions.invoke('notify-task',{body:{to:assignee,title:patch.t,date:patch.date,note:patch.note}}).then(r=>{ if(r.error||(r.data&&!r.data.ok)) toast('Guardada, pero el aviso por email no salió'); else toast('📧 Aviso enviado a '+assignee); }).catch(()=>toast('Guardada (el aviso por email falló)')); }
 });
 $('#tDelete').addEventListener('click',()=>{deleteTask(editingTask);closeModal('mTask');});
 
