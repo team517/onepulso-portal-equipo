@@ -134,6 +134,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
 .notes-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font-size:14px}
 .notes-area{width:100%;min-height:72px}
 .notes-card.ro .notes-area{background:var(--surface);cursor:default}
+.smtp-tag{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#0a7d47;background:#e4f7ee;border:1px solid #bfe9cf;padding:5px 11px;border-radius:20px;white-space:nowrap}
 
 /* week */
 .wk{display:grid;grid-template-columns:repeat(7,minmax(120px,1fr));border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff}
@@ -333,7 +334,7 @@ textarea.area{height:auto;min-height:80px;padding:10px 14px;resize:vertical;line
     <header class="topbar">
       <button class="menu-btn" id="menuBtn"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
       <div class="title"><h1 id="vwTitle">Calendario</h1><p id="vwSub">Semana del equipo</p></div>
-      <div class="right"><button class="btn btn-primary btn-sm" id="primaryAction" hidden>Acción</button></div>
+      <div class="right"><span class="smtp-tag" id="smtpTag" hidden>📧 <b id="smtpTagEmail"></b></span><button class="btn btn-ghost btn-sm" id="smtpBtn" hidden>📧 Conectar correo</button><button class="btn btn-primary btn-sm" id="primaryAction" hidden>Acción</button></div>
     </header>
 
     <!-- Calendario -->
@@ -447,6 +448,23 @@ textarea.area{height:auto;min-height:80px;padding:10px 14px;resize:vertical;line
   </div>
 </div>
 
+<div class="modal" id="mSmtp">
+  <div class="box"><div class="h"><h3>Conectar correo (SMTP)</h3><button class="x" data-close><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="b">
+      <div class="alert" id="smtpAlert"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg><span id="smtpAlertMsg"></span></div>
+      <div class="grid2">
+        <div class="field"><label>Servidor SMTP</label><input class="inp" id="smHost" placeholder="smtp.ionos.es" spellcheck="false"></div>
+        <div class="field"><label>Puerto</label><input class="inp" id="smPort" type="number" placeholder="465"></div>
+      </div>
+      <div class="field"><label>Usuario (correo)</label><input class="inp" id="smUser" placeholder="team@onepulso.online" spellcheck="false" autocapitalize="none"></div>
+      <div class="field"><label>Contraseña</label><input class="inp" id="smPass" type="password" placeholder="•••••••• (déjalo vacío para no cambiarla)" autocapitalize="none"></div>
+      <div class="field"><label>Enviar desde (opcional)</label><input class="inp" id="smFrom" placeholder="team@onepulso.online" spellcheck="false"></div>
+      <p class="hint">Sirve para avisar por email a los responsables de las tareas. La contraseña se guarda protegida (solo tú, el admin, la manejas). Puerto 465 = SSL · 587 = STARTTLS.</p>
+    </div>
+    <div class="f"><button class="btn btn-ghost btn-sm" id="smTest">Enviar prueba</button><button class="btn btn-ghost btn-sm push" data-close>Cancelar</button><button class="btn btn-primary btn-sm" id="smSave">Guardar</button></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m5 12 5 5L20 7"/></svg><span id="toastMsg"></span></div>
 
 <!-- Config inyectada por EasyPanel (envsubst desde SUPABASE_URL / SUPABASE_ANON_KEY) -->
@@ -477,8 +495,58 @@ window.sb = null;
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const DOMAIN='@onepulso.online';
 const K={users:'op_users',session:'op_session',tasks:'op_tasks',clients:'op_clients',events:'op_events',reminders:'op_reminders',notes:'op_notes'};
-const load=(k,f)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):f;}catch(e){return f;}};
-const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}};
+/* ===== Datos compartidos en Supabase (con caché en memoria) ===== */
+const DB={tasks:[],clients:[],reminders:{},notes:''};
+const _lsLoad=(k,f)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):f;}catch(e){return f;}};
+const _lsSave=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}};
+function load(k,f){
+  if(k===K.tasks) return DB.tasks.map(t=>({...t}));
+  if(k===K.clients) return DB.clients.map(c=>({...c}));
+  if(k===K.reminders) return DB.reminders;
+  if(k===K.notes) return DB.notes;
+  return _lsLoad(k,f);
+}
+function save(k,v){
+  if(k===K.tasks){ syncArray('tasks', DB.tasks, v, taskToRow); DB.tasks=v; return; }
+  if(k===K.clients){ syncArray('clients', DB.clients, v, clientToRow); DB.clients=v; return; }
+  if(k===K.reminders){ DB.reminders=v||{}; kvUpsert('reminders', DB.reminders); return; }
+  if(k===K.notes){ DB.notes=v||''; kvUpsert('notes', {text:DB.notes}); return; }
+  _lsSave(k,v);
+}
+const taskToRow=t=>({id:t.id,title:t.t,date:t.date||null,assignee:t.assignee||null,done:!!t.done,note:t.note||null,images:t.images||[]});
+const clientToRow=c=>({id:c.id,name:c.name,email:c.email||null,owner:c.owner||null,status:c.status||'on'});
+function syncArray(table,oldArr,newArr,mapFn){
+  if(!window.sb) return;
+  const oldById={}; oldArr.forEach(x=>oldById[x.id]=x);
+  const newIds=new Set(newArr.map(x=>x.id));
+  const changed=newArr.filter(x=>{const o=oldById[x.id];return !o||JSON.stringify(mapFn(o))!==JSON.stringify(mapFn(x));});
+  const removed=oldArr.filter(x=>!newIds.has(x.id)).map(x=>x.id);
+  (async()=>{ try{
+    if(changed.length){const {error}=await sb.from(table).upsert(changed.map(mapFn));if(error)throw error;}
+    if(removed.length){const {error}=await sb.from(table).delete().in('id',removed);if(error)throw error;}
+  }catch(e){console.warn('sync '+table,e);toast('No se pudo guardar: '+(e.message||e));await loadAll();rerender();} })();
+}
+function kvUpsert(k,v){ if(!window.sb)return; (async()=>{try{const {error}=await sb.from('app_kv').upsert({k,v,updated_at:new Date().toISOString()});if(error)throw error;}catch(e){console.warn('kv',e);toast('No se pudo guardar: '+(e.message||e));}})(); }
+async function loadAll(){
+  if(!window.sb) return;
+  try{
+    const [tk,cl,kv]=await Promise.all([sb.from('tasks').select('*').order('created_at'),sb.from('clients').select('*').order('created_at'),sb.from('app_kv').select('*')]);
+    DB.tasks=(tk.data||[]).map(r=>({id:r.id,t:r.title,date:r.date,assignee:r.assignee||'',done:!!r.done,note:r.note||'',images:r.images||[]}));
+    DB.clients=(cl.data||[]).map(r=>({id:r.id,name:r.name,email:r.email||'',owner:r.owner||'',status:r.status||'on'}));
+    const m={};(kv.data||[]).forEach(r=>m[r.k]=r.v); DB.reminders=m.reminders||{}; DB.notes=(m.notes&&m.notes.text)||'';
+  }catch(e){console.warn('loadAll',e);}
+}
+function rerender(){ if(!document.getElementById('app').hidden){renderCalendar();renderTasks();renderClients();renderNotes();updateCounts();} }
+let rtChan=null,refreshT=null;
+function subscribeRealtime(){
+  if(!window.sb||rtChan)return;
+  rtChan=sb.channel('team-rt')
+    .on('postgres_changes',{event:'*',schema:'public',table:'tasks'},scheduleRefresh)
+    .on('postgres_changes',{event:'*',schema:'public',table:'clients'},scheduleRefresh)
+    .on('postgres_changes',{event:'*',schema:'public',table:'app_kv'},scheduleRefresh)
+    .subscribe();
+}
+function scheduleRefresh(){clearTimeout(refreshT);refreshT=setTimeout(async()=>{await loadAll();rerender();},350);}
 const initials=s=>String(s).trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase()||'U';
 const firstName=s=>String(s).trim().split(/\s+/)[0]||s;
 const AVCOL=['#7A5AF8','#0088b0','#12b76a','#E5A400','#D6006C','#5B3AD9'];
@@ -502,25 +570,8 @@ const TODAY=new Date();
 /* Las reuniones viven en localStorage (op_events) para poder borrarlas — se siembran en seed() */
 
 /* ---------- Seed ---------- */
-function seed(){
-  // reuniones eliminadas; ahora hay recordatorios por día (op_reminders)
-  // usuarios: la autenticación es de Supabase (no se guardan en el navegador)
-  if(!localStorage.getItem(K.tasks)) save(K.tasks,[
-    {id:1,t:'Revisar respuestas de la campaña Vitalis',date:'2026-09-04',assignee:'team@onepulso.online',done:false},
-    {id:2,t:'Preparar informe semanal del equipo',date:'2026-09-05',assignee:'team@onepulso.online',done:false},
-    {id:3,t:'Calentar los buzones nuevos',date:'2026-09-03',assignee:'team@onepulso.online',done:true},
-    {id:4,t:'Actualizar la base de leads de septiembre',date:'2026-09-08',assignee:'',done:false}
-  ]);
-  if(!localStorage.getItem(K.clients)) save(K.clients,[
-    {id:1,name:'SEO Innova',email:'hola@seoinnova.es',owner:'team@onepulso.online',status:'on'},
-    {id:2,name:'Grupo Adwake',email:'contacto@adwake.com',owner:'team@onepulso.online',status:'on'},
-    {id:3,name:'ANIMSA',email:'info@animsa.es',owner:'',status:'pend'},
-    {id:4,name:'Cedra',email:'equipo@cedra.io',owner:'team@onepulso.online',status:'on'},
-    {id:5,name:'Nordic Discovery',email:'sales@nordic.co',owner:'',status:'paused'}
-  ]);
-}
-seed();
-try{localStorage.removeItem('op_events');}catch(e){}
+function seed(){ /* los datos ahora viven en Supabase (compartidos entre el equipo) */ }
+try{['op_events','op_tasks','op_clients','op_reminders','op_notes'].forEach(k=>localStorage.removeItem(k));}catch(e){}
 /* usuarios y contraseñas: gestionados por Supabase Auth */
 
 /* users helpers */
@@ -573,13 +624,15 @@ async function afterAuth(){
   let prof=null; try{ prof=(await sb.from('profiles').select('id,email,name,role').eq('id',user.id).single()).data; }catch(_){}
   me={ id:user.id, email:user.email, name:(prof&&prof.name)||user.email, role:(prof&&prof.role)||'member' };
   await loadProfiles();
+  await loadAll();
   enterApp(me);
+  subscribeRealtime();
 }
 function enterApp(u){
   me=u;
   $('#login').hidden=true;$('#app').hidden=false;
   $('#uName').textContent=u.name;$('#uEmail').textContent=u.email;$('#uAv').textContent=initials(u.name);$('#uAv').style.background=colorFor(u.name);
-  const admin=u.role==='admin';$('#adminLbl').hidden=!admin;$('#navUsers').hidden=!admin;
+  const admin=u.role==='admin';$('#adminLbl').hidden=!admin;$('#navUsers').hidden=!admin;$('#smtpBtn').hidden=!admin;loadSmtpTag();
   calView='semana';calDate=new Date(TODAY);
   renderAll();go('calendario');toast('Sesión iniciada · '+u.name);
 }
@@ -740,8 +793,7 @@ $('#tSave').addEventListener('click',()=>{
   const tasks=load(K.tasks,[]);
   if(editingTask){const t=tasks.find(x=>x.id===editingTask);Object.assign(t,patch);}
   else tasks.unshift(Object.assign({id:Date.now()},patch));
-  try{localStorage.setItem(K.tasks,JSON.stringify(tasks));}
-  catch(err){toast('No se pudieron guardar las fotos (demasiado pesadas). Prueba con menos.');return;}
+  save(K.tasks,tasks);
   closeModal('mTask');renderCalendar();renderTasks();updateCounts();
   toast(patch.done?'Tarea terminada ✓':(editingTask?'Tarea actualizada':'Tarea creada'));
   if(notify&&window.sb){ sb.functions.invoke('notify-task',{body:{to:assignee,title:patch.t,date:patch.date,note:patch.note}}).then(r=>{ if(r.error||(r.data&&!r.data.ok)) toast('Guardada, pero el aviso por email no salió'); else toast('📧 Aviso enviado a '+assignee); }).catch(()=>toast('Guardada (el aviso por email falló)')); }
@@ -834,6 +886,39 @@ $('#nuSave').addEventListener('click',async ()=>{
 });
 
 /* ----- Modal + misc ----- */
+/* ----- SMTP (admin) ----- */
+$('#smtpBtn').addEventListener('click',openSmtp);
+async function openSmtp(){
+  if(!admin())return;
+  $('#smtpAlert').classList.remove('show');
+  let cfg=null; try{ cfg=(await sb.from('smtp_config').select('host,port,username,from_email').eq('id','main').maybeSingle()).data; }catch(_){}
+  $('#smHost').value=(cfg&&cfg.host)||''; $('#smPort').value=(cfg&&cfg.port)||465; $('#smUser').value=(cfg&&cfg.username)||''; $('#smFrom').value=(cfg&&cfg.from_email)||''; $('#smPass').value='';
+  openModal('mSmtp');
+}
+function smtpErr(m){$('#smtpAlertMsg').textContent=m;$('#smtpAlert').classList.add('show');}
+$('#smSave').addEventListener('click',async ()=>{
+  $('#smtpAlert').classList.remove('show');
+  const host=$('#smHost').value.trim(), port=+($('#smPort').value||465), username=$('#smUser').value.trim().toLowerCase(), from_email=$('#smFrom').value.trim().toLowerCase()||username, pass=$('#smPass').value;
+  if(!host||!username) return smtpErr('Pon al menos el servidor y el usuario (correo).');
+  const row={id:'main',host,port,username,from_email,updated_at:new Date().toISOString()};
+  if(pass) row.pass=pass;
+  const {error}=await sb.from('smtp_config').upsert(row);
+  if(error) return smtpErr('Error: '+error.message);
+  closeModal('mSmtp');loadSmtpTag();toast('Correo SMTP guardado ✓');
+});
+$('#smTest').addEventListener('click',async ()=>{
+  toast('Enviando prueba…');
+  const {data,error}=await sb.functions.invoke('notify-task',{body:{to:me.email,title:'Prueba de conexión SMTP',note:'Si recibes este correo, el SMTP está bien configurado.'}});
+  if(error) return toast('Error: '+error.message);
+  if(!data||!data.ok) return toast('No se pudo: '+((data&&data.error)||'revisa los datos SMTP'));
+  toast('📧 Prueba enviada a '+me.email);
+});
+async function loadSmtpTag(){
+  try{ const {data}=await sb.from('smtp_public').select('from_email,connected').maybeSingle();
+    if(data&&data.connected&&data.from_email){ $('#smtpTagEmail').textContent=data.from_email; $('#smtpTag').hidden=false; }
+    else { $('#smtpTag').hidden=true; }
+  }catch(_){ $('#smtpTag').hidden=true; }
+}
 function openModal(id){$('#'+id).classList.add('show');}
 function closeModal(id){$('#'+id).classList.remove('show');}
 $$('.modal').forEach(m=>m.addEventListener('click',e=>{if(e.target===m||e.target.closest('[data-close]'))m.classList.remove('show');}));

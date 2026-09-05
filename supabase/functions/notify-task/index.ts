@@ -33,12 +33,14 @@ Deno.serve(async (req) => {
     const { data: target } = await admin.from("profiles").select("email,name").eq("email", to).single();
     if (!target) return json({ ok: false, error: "El destinatario no es un usuario del equipo" });
 
-    const host = Deno.env.get("SMTP_HOST");
-    const port = Number(Deno.env.get("SMTP_PORT") || "465");
-    const suser = Deno.env.get("SMTP_USER");
-    const spass = Deno.env.get("SMTP_PASS");
-    if (!host || !suser || !spass) return json({ ok: false, error: "SMTP no configurado (faltan secrets)" });
-    const from = Deno.env.get("SMTP_FROM") || suser;
+    // Config SMTP: primero de la tabla smtp_config (puesta desde el portal), si no, de los secrets
+    const { data: cfg } = await admin.from("smtp_config").select("host,port,username,pass,from_email").eq("id", "main").maybeSingle();
+    const host = (cfg && cfg.host) || Deno.env.get("SMTP_HOST");
+    const port = Number((cfg && cfg.port) || Deno.env.get("SMTP_PORT") || "465");
+    const suser = (cfg && cfg.username) || Deno.env.get("SMTP_USER");
+    const spass = (cfg && cfg.pass) || Deno.env.get("SMTP_PASS");
+    if (!host || !suser || !spass) return json({ ok: false, error: "SMTP no configurado. Conéctalo desde el portal (botón Correo)." });
+    const from = (cfg && cfg.from_email) || Deno.env.get("SMTP_FROM") || suser;
 
     const title = String(body.title || "Tarea");
     const dateTxt = body.date ? (" para el " + String(body.date)) : "";
