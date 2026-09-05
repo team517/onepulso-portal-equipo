@@ -723,12 +723,13 @@ function taskIndicators(t){
   return h;
 }
 function taskChip(t,um){
+  const isRec=!!t.rec_id;
   const tag=(t.assignee&&um[t.assignee])?whoTag(t.assignee,um):'';
   const canEdit=admin()||(me&&t.assignee===me.email);
   const canDel=admin()||(me&&t.creator&&t.creator===me.email);
-  return '<div class="tsk'+(t.done?' done':'')+'" draggable="'+(canEdit?'true':'false')+'" data-task="'+t.id+'">'
+  return '<div class="tsk'+(isRec?' rec':'')+(t.done?' done':'')+'" draggable="'+((canEdit&&!isRec)?'true':'false')+'" data-task="'+t.id+'">'
     +(canDel?'<button class="tdel" data-del-task="'+t.id+'" title="Quitar tarea">×</button>':'')
-    +'<div class="tsk-top"><button class="tcb" data-toggle="'+t.id+'" title="'+(t.done?'Reabrir':'Marcar terminada')+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 5 5L20 7"/></svg></button><span class="tt">'+esc(t.t)+'</span></div>'
+    +'<div class="tsk-top"><button class="tcb" data-toggle="'+t.id+'" title="'+(t.done?'Reabrir':'Marcar terminada')+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 5 5L20 7"/></svg></button>'+(isRec?'<span class="rec-ic">🔁</span>':'')+'<span class="tt">'+esc(t.t)+'</span></div>'
     +'<div class="tsk-foot">'+tag+taskIndicators(t)+'</div></div>';
 }
 function recChip(r,iso,um){
@@ -803,7 +804,7 @@ calWrap.addEventListener('click',e=>{
   const add=e.target.closest('.addbtn'); if(add){openTask(null,add.dataset.add);return;}
   const rmb=e.target.closest('.rem'); if(rmb){e.stopPropagation();editReminder(rmb.dataset.rem);return;}
   const rcd=e.target.closest('[data-recdone]'); if(rcd){e.stopPropagation();materializeRec(+rcd.dataset.recdone, rcd.dataset.recdate, true);return;}
-  const rec=e.target.closest('.tsk.rec'); if(rec){openTask(null,{occ:{recId:+rec.dataset.rec, iso:rec.dataset.recdate}});return;}
+  const rec=e.target.closest('[data-rec]'); if(rec){openTask(null,{occ:{recId:+rec.dataset.rec, iso:rec.dataset.recdate}});return;}
   const del=e.target.closest('.tdel'); if(del){e.stopPropagation();if(canDeleteTask(+del.dataset.delTask))deleteTask(+del.dataset.delTask);else toast('Solo quien la creó puede eliminarla');return;}
   const tog=e.target.closest('.tcb'); if(tog){e.stopPropagation();const id=+tog.dataset.toggle;if(canEditTask(id))checkTask(id);else toast('Solo puedes cambiar tus propias tareas');return;}
   const tsk=e.target.closest('.tsk'); if(tsk){const id=+tsk.dataset.task;if(canEditTask(id))openTask(id);else toast('Solo el administrador puede editar esta tarea');}
@@ -823,7 +824,15 @@ function canEditTask(id){const t=taskById(id);return !!t&&(admin()||(me&&t.assig
 function canDeleteTask(id){const t=taskById(id);return !!t&&(admin()||(me&&t.creator&&t.creator===me.email));}
 function editReminder(iso){if(!admin())return;const all=load(K.reminders,{});const cur=all[iso]||'';const v=prompt('Recordatorio para el '+fmtDate(iso)+':',cur);if(v===null)return;if(v.trim()==='')delete all[iso];else all[iso]=v.trim();save(K.reminders,all);renderCalendar();}
 function reopenTask(id){const tasks=load(K.tasks,[]),t=tasks.find(x=>x.id===id);if(!t)return;t.done=false;save(K.tasks,tasks);updateRow('tasks',id,{done:false});renderCalendar();renderTasks();updateCounts();toast('Tarea reabierta');}
-function checkTask(id){const t=taskById(id);if(!t)return;if(t.done)reopenTask(id);else openTask(id,{complete:true});}
+function checkTask(id){const t=taskById(id);if(!t)return;
+  if(!t.done){ openTask(id,{complete:true}); return; }
+  if(t.rec_id){ // desmarcar una ocurrencia recurrente -> vuelve a ser la recurrente
+    if(!canDeleteTask(id)){toast('No puedes cambiar esta');return;}
+    removeRow('tasks',id).then(ok=>{if(ok){DB.tasks=DB.tasks.filter(x=>x.id!==id);renderCalendar();renderTasks();updateCounts();toast('Recurrente reabierta');}});
+    return;
+  }
+  reopenTask(id);
+}
 
 /* ----- Task modal ----- */
 let editingTask=null, draftImages=[];
