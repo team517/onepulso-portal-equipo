@@ -18,6 +18,17 @@ python -m http.server 8123
 
 Solo se permiten cuentas `@onepulso.online`. El administrador (`team@`) puede crear más usuarios desde **Usuarios**, y esas personas podrán iniciar sesión.
 
+## Despliegue en Railway
+
+El repo incluye un servidor estático sin dependencias (`server.js`) y `package.json`, así que Railway lo despliega sin configuración adicional:
+
+1. Entra en [railway.app](https://railway.app) → **New Project** → **Deploy from GitHub repo**.
+2. Autoriza el acceso a GitHub y elige **`team517/onepulso-portal-empleados`** (privado).
+3. Railway detecta Node y ejecuta `npm start` (`node server.js`), usando el puerto que asigna (`$PORT`).
+4. En **Settings → Networking → Generate Domain** para obtener la URL pública en vivo.
+
+En local: `npm start` (puerto 8080) o `python -m http.server 8123`.
+
 ## Funciones
 
 - **Login** con roles (admin / miembro). Sin acceso de invitado.
