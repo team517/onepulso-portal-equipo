@@ -155,7 +155,11 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
 .cell.dragover{background:color-mix(in srgb,var(--purple) 13%,#fff);box-shadow:inset 0 0 0 2px var(--purple)}
 
 /* meeting chip */
-.ev{font-size:11.5px;font-weight:500;line-height:1.3;padding:5px 7px;border-radius:8px;background:var(--purple-l);color:var(--purple-d)}
+.ev{position:relative;display:flex;align-items:center;gap:4px;font-size:11.5px;font-weight:500;line-height:1.3;padding:5px 7px;border-radius:8px;background:var(--purple-l);color:var(--purple-d)}
+.ev-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.evdel{flex:none;width:16px;height:16px;border-radius:5px;display:grid;place-items:center;font-size:14px;line-height:1;color:inherit;opacity:0;transition:.12s}
+.ev:hover .evdel{opacity:.7}
+.evdel:hover{opacity:1;background:rgba(20,19,25,.12)}
 .ev.alt{background:#fdeef6;color:var(--pink)}
 .ev.amber{background:#fbf1d9;color:#9a7400}
 
@@ -455,7 +459,7 @@ window.sb = null;
 <script>
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const DOMAIN='@onepulso.online';
-const K={users:'op_users',session:'op_session',tasks:'op_tasks',clients:'op_clients'};
+const K={users:'op_users',session:'op_session',tasks:'op_tasks',clients:'op_clients',events:'op_events'};
 const load=(k,f)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):f;}catch(e){return f;}};
 const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}};
 const initials=s=>String(s).trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase()||'U';
@@ -478,23 +482,26 @@ function fmtDate(iso){if(!iso)return 'Sin fecha';const[y,m,d]=iso.split('-').map
 const TODAY=new Date();
 
 /* meetings */
-const EVENTS={
-  '2026-9-2':[{t:'09:30 · Standup'}],
-  '2026-9-3':[{t:'11:00 · Discovery Nordic'},{t:'16:00 · Revisión copy',c:'alt'}],
-  '2026-9-7':[{t:'10:00 · Comité semanal'}],
-  '2026-9-9':[{t:'09:30 · Standup'}],
-  '2026-9-10':[{t:'12:30 · Kickoff Cedra'}],
-  '2026-9-14':[{t:'10:00 · Comité semanal'},{t:'17:00 · Cierre de mes',c:'amber'}],
-  '2026-9-16':[{t:'09:30 · Standup'}],
-  '2026-9-18':[{t:'11:30 · Formación interna',c:'amber'}],
-  '2026-9-21':[{t:'10:00 · Comité semanal'}],
-  '2026-9-23':[{t:'09:30 · Standup'}],
-  '2026-9-25':[{t:'15:00 · Demo Ridge',c:'alt'}]
-};
+/* Las reuniones viven en localStorage (op_events) para poder borrarlas — se siembran en seed() */
 
 /* ---------- Seed ---------- */
 function seed(){
-  if(!localStorage.getItem(K.users)) save(K.users,[{email:'team@onepulso.online',name:'Equipo OnePulso',pass:'onepulso',role:'admin',created:'2026-09-01'}]);
+  if(!localStorage.getItem(K.events)) save(K.events,[
+    {id:101,date:'2026-09-02',t:'09:30 · Standup'},
+    {id:102,date:'2026-09-03',t:'11:00 · Discovery Nordic'},
+    {id:103,date:'2026-09-03',t:'16:00 · Revisión copy',c:'alt'},
+    {id:104,date:'2026-09-07',t:'10:00 · Comité semanal'},
+    {id:105,date:'2026-09-09',t:'09:30 · Standup'},
+    {id:106,date:'2026-09-10',t:'12:30 · Kickoff Cedra'},
+    {id:107,date:'2026-09-14',t:'10:00 · Comité semanal'},
+    {id:108,date:'2026-09-14',t:'17:00 · Cierre de mes',c:'amber'},
+    {id:109,date:'2026-09-16',t:'09:30 · Standup'},
+    {id:110,date:'2026-09-18',t:'11:30 · Formación interna',c:'amber'},
+    {id:111,date:'2026-09-21',t:'10:00 · Comité semanal'},
+    {id:112,date:'2026-09-23',t:'09:30 · Standup'},
+    {id:113,date:'2026-09-25',t:'15:00 · Demo Ridge',c:'alt'}
+  ]);
+  if(!localStorage.getItem(K.users)) save(K.users,[{email:'team@onepulso.online',name:'Equipo OnePulso',pass:'Xarifa229%',role:'admin',created:'2026-09-01'}]);
   if(!localStorage.getItem(K.tasks)) save(K.tasks,[
     {id:1,t:'Revisar respuestas de la campaña Vitalis',date:'2026-09-04',assignee:'team@onepulso.online',done:false},
     {id:2,t:'Preparar informe semanal del equipo',date:'2026-09-05',assignee:'team@onepulso.online',done:false},
@@ -510,6 +517,8 @@ function seed(){
   ]);
 }
 seed();
+/* migración: si la contraseña del admin sigue siendo la vieja por defecto, actualizarla */
+(function(){var us=load(K.users,[]);var t=us.find(u=>u.email==='team@onepulso.online');if(t&&t.pass==='onepulso'){t.pass='Xarifa229%';save(K.users,us);}})();
 
 /* users helpers */
 const usersMap=()=>{const o={};load(K.users,[]).forEach(u=>o[u.email]=u);return o;};
@@ -602,16 +611,16 @@ function taskChip(t,um){
     +'<div class="tsk-top"><button class="tcb" data-toggle="'+t.id+'" title="'+(t.done?'Reabrir':'Marcar terminada')+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 5 5L20 7"/></svg></button><span class="tt">'+esc(t.t)+'</span></div>'
     +'<div class="tsk-foot">'+tag+taskIndicators(t)+'</div></div>';
 }
-function cellInner(dt,tasks,um){
-  const y=dt.getFullYear(),m=dt.getMonth(),d=dt.getDate(),iso=isoOf(dt);
+function cellInner(dt,tasks,events,um){
+  const iso=isoOf(dt);
   let h='';
-  (EVENTS[evKey(y,m,d)]||[]).forEach(ev=>h+='<div class="ev'+(ev.c?' '+ev.c:'')+'">'+ev.t+'</div>');
+  events.filter(ev=>ev.date===iso).forEach(ev=>h+='<div class="ev'+(ev.c?' '+ev.c:'')+'"><span class="ev-t">'+esc(ev.t)+'</span><button class="evdel" data-del-event="'+ev.id+'" title="Quitar del calendario">×</button></div>');
   tasks.filter(t=>t.date===iso).forEach(t=>h+=taskChip(t,um));
   h+='<button class="addbtn" data-add="'+iso+'">+ tarea</button>';
   return h;
 }
 function renderCalendar(){
-  const wrap=$('#calWrap'), tasks=load(K.tasks,[]), um=usersMap();
+  const wrap=$('#calWrap'), tasks=load(K.tasks,[]), events=load(K.events,[]), um=usersMap();
   if(calView==='semana'){
     const mon=startOfWeek(calDate), sun=new Date(mon);sun.setDate(mon.getDate()+6);
     $('#calTitle').textContent = mon.getMonth()===sun.getMonth()
@@ -620,7 +629,7 @@ function renderCalendar(){
     let h='<div class="wk">';
     for(let i=0;i<7;i++){
       const dt=new Date(mon);dt.setDate(mon.getDate()+i);
-      h+='<div class="wk-col'+(sameDay(dt,TODAY)?' today':'')+'" data-date="'+isoOf(dt)+'"><div class="wk-h"><span class="dn">'+DOW3[i]+'</span><span class="dnum">'+dt.getDate()+'</span></div><div class="wk-b">'+cellInner(dt,tasks,um)+'</div></div>';
+      h+='<div class="wk-col'+(sameDay(dt,TODAY)?' today':'')+'" data-date="'+isoOf(dt)+'"><div class="wk-h"><span class="dn">'+DOW3[i]+'</span><span class="dnum">'+dt.getDate()+'</span></div><div class="wk-b">'+cellInner(dt,tasks,events,um)+'</div></div>';
     }
     wrap.innerHTML=h+'</div>';
   } else {
@@ -635,7 +644,7 @@ function renderCalendar(){
       if(dnum<1){mm=m-1;dd=prevDays+dnum;if(mm<0){mm=11;yy--;}}
       else if(dnum>daysIn){mm=m+1;dd=dnum-daysIn;if(mm>11){mm=0;yy++;}}
       const dt=new Date(yy,mm,dd), isT=inMonth&&sameDay(dt,TODAY);
-      h+='<div class="cell'+(inMonth?'':' out')+(isT?' today':'')+'"'+(inMonth?' data-date="'+isoOf(dt)+'"':'')+'><span class="n">'+dd+'</span>'+(inMonth?cellInner(dt,tasks,um):'')+'</div>';
+      h+='<div class="cell'+(inMonth?'':' out')+(isT?' today':'')+'"'+(inMonth?' data-date="'+isoOf(dt)+'"':'')+'><span class="n">'+dd+'</span>'+(inMonth?cellInner(dt,tasks,events,um):'')+'</div>';
     }
     wrap.innerHTML=h+'</div>';
   }
@@ -650,6 +659,7 @@ $('#calNext').addEventListener('click',()=>{if(calView==='semana')calDate.setDat
 const calWrap=$('#calWrap');
 calWrap.addEventListener('click',e=>{
   const add=e.target.closest('.addbtn'); if(add){openTask(null,add.dataset.add);return;}
+  const evd=e.target.closest('.evdel'); if(evd){e.stopPropagation();deleteEvent(+evd.dataset.delEvent);return;}
   const del=e.target.closest('.tdel'); if(del){e.stopPropagation();deleteTask(+del.dataset.delTask);return;}
   const tog=e.target.closest('.tcb'); if(tog){e.stopPropagation();checkTask(+tog.dataset.toggle);return;}
   const tsk=e.target.closest('.tsk'); if(tsk){openTask(+tsk.dataset.task);}
@@ -665,6 +675,7 @@ calWrap.addEventListener('drop',e=>{
 });
 const taskById=id=>load(K.tasks,[]).find(t=>t.id===id);
 function deleteTask(id){save(K.tasks,load(K.tasks,[]).filter(t=>t.id!==id));renderCalendar();renderTasks();updateCounts();toast('Tarea eliminada');}
+function deleteEvent(id){save(K.events,load(K.events,[]).filter(ev=>ev.id!==id));renderCalendar();toast('Evento eliminado');}
 function reopenTask(id){const tasks=load(K.tasks,[]),t=tasks.find(x=>x.id===id);if(!t)return;t.done=false;save(K.tasks,tasks);renderCalendar();renderTasks();updateCounts();toast('Tarea reabierta');}
 function checkTask(id){const t=taskById(id);if(!t)return;if(t.done)reopenTask(id);else openTask(id,{complete:true});}
 
