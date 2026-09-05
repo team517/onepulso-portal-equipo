@@ -299,10 +299,6 @@ textarea.area{height:auto;min-height:80px;padding:10px 14px;resize:vertical;line
       <div class="eyebrow">Uso interno · Solo equipo onepulso · <span id="heroDate"></span></div>
       <h1>Portal del equipo</h1>
       <p>Calendario, tareas y clientes del equipo onepulso. Entra con tu correo de empresa para ver tu semana.</p>
-      <div class="auth__stats">
-        <div><b id="stTasks">0</b><span>Tareas esta semana</span></div>
-        <div><b id="stTeam">1</b><span>Personas con acceso</span></div>
-      </div>
     </div>
     <div class="foot">© <span id="year"></span> onepulso · Portal interno del equipo</div>
   </aside>
@@ -641,8 +637,7 @@ const admin=()=>!!(me&&me.role==='admin');
 /* ============ LOGIN ============ */
 $('#year').textContent=new Date().getFullYear();
 $('#heroDate').textContent=TODAY.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-/* stTeam: número informativo del hero (se rellena tras iniciar sesión) */
-$('#stTasks').textContent=load(K.tasks,[]).filter(t=>!t.done).length;
+/* (bloque de estadísticas del login eliminado) */
 
 $('#pwToggle').addEventListener('click',()=>{
   const p=$('#password'), show=p.type==='password'; p.type=show?'text':'password';
@@ -1049,7 +1044,7 @@ function renderUsers(){
     '<td style="text-align:right">'+(!isMe?'<button class="rowbtn" data-del-user="'+esc(u.email)+'" title="Quitar acceso"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></button>':'')+'</td></tr>'
   );}).join('');
 }
-$('#userRows').addEventListener('click',async e=>{const b=e.target.closest('[data-del-user]');if(!b)return;const email=b.dataset.delUser;if(!confirm('¿Quitar el acceso a '+email+'? Se borrará su cuenta.'))return;const {data,error}=await sb.functions.invoke('admin-create-user',{body:{action:'delete',email}});if(error){toast('Error: '+error.message);return;}if(!data.ok){toast(data.error||'No se pudo');return;}await loadProfiles();renderUsers();updateCounts();$('#stTeam').textContent=profilesCache.length;toast('Acceso retirado');});
+$('#userRows').addEventListener('click',async e=>{const b=e.target.closest('[data-del-user]');if(!b)return;const email=b.dataset.delUser;if(!confirm('¿Quitar el acceso a '+email+'? Se borrará su cuenta.'))return;const {data,error}=await sb.functions.invoke('admin-create-user',{body:{action:'delete',email}});if(error){toast('Error: '+error.message);return;}if(!data.ok){toast(data.error||'No se pudo');return;}await loadProfiles();renderUsers();updateCounts();toast('Acceso retirado');});
 function uErr(m){const a=$('#uAlert');$('#uAlertMsg').textContent=m;a.classList.add('show');}
 function openUser(){['nuName','nuEmail','nuPass'].forEach(i=>$('#'+i).value='');$('#nuRole').value='member';$('#uAlert').classList.remove('show');openModal('mUser');setTimeout(()=>$('#nuName').focus(),50);}
 $('#nuSave').addEventListener('click',async ()=>{
@@ -1063,7 +1058,7 @@ $('#nuSave').addEventListener('click',async ()=>{
   btn.disabled=false;btn.textContent='Crear usuario';
   if(error)return uErr('Error: '+error.message);
   if(!data.ok)return uErr(data.error||'No se pudo crear el usuario');
-  closeModal('mUser');await loadProfiles();renderUsers();updateCounts();$('#stTeam').textContent=profilesCache.length;toast('Usuario creado · '+name+' ya puede entrar');
+  closeModal('mUser');await loadProfiles();renderUsers();updateCounts();toast('Usuario creado · '+name+' ya puede entrar');
 });
 
 /* ----- Modal + misc ----- */
