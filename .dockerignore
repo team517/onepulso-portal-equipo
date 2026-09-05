@@ -1,0 +1,8 @@
+.git
+.gitignore
+README.md
+server.js
+package.json
+*.log
+.vscode
+.idea
