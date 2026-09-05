@@ -494,7 +494,7 @@ window.sb = null;
   try{
     var cfg = window.__SUPABASE__ || {};
     if(cfg.url && cfg.anonKey && window.supabase){
-      window.sb = window.supabase.createClient(cfg.url, cfg.anonKey);
+      window.sb = window.supabase.createClient(cfg.url, cfg.anonKey, { auth: { persistSession:true, autoRefreshToken:true, storageKey:'op-portal-auth' } });
       console.log('[Supabase] cliente inicializado →', cfg.url);
       fetch(cfg.url.replace(/\/$/,'') + '/auth/v1/health', { headers: { apikey: cfg.anonKey } })
         .then(function(r){ console.log('[Supabase] health:', r.status); })
@@ -662,7 +662,7 @@ function enterApp(u){
   $('#segWeek').classList.add('on'); $('#segMonth').classList.remove('on');
   renderAll();go('calendario');toast('Sesión iniciada · '+u.name);
 }
-$('#logout').addEventListener('click',async ()=>{try{if(window.sb)await sb.auth.signOut();}catch(_){}me=null;profilesCache=[];$('#app').hidden=true;$('#login').hidden=false;$('#loginForm').reset();loginClear();$('#email').focus();});
+$('#logout').addEventListener('click',async ()=>{if(!confirm('¿Cerrar sesión en este dispositivo?'))return;try{if(window.sb)await sb.auth.signOut({scope:'local'});}catch(_){}me=null;profilesCache=[];$('#app').hidden=true;$('#login').hidden=false;$('#loginForm').reset();loginClear();$('#email').focus();});
 
 /* ============ NAV ============ */
 const TITLES={calendario:['Calendario','Semana del equipo'],tareas:['Tareas','Tus tareas asignadas'],clientes:['Clientes','Cuentas y responsables'],usuarios:['Usuarios','Gestiona quién puede entrar']};
