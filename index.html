@@ -160,6 +160,13 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
 .evdel{flex:none;width:16px;height:16px;border-radius:5px;display:grid;place-items:center;font-size:14px;line-height:1;color:inherit;opacity:0;transition:.12s}
 .ev:hover .evdel{opacity:.7}
 .evdel:hover{opacity:1;background:rgba(20,19,25,.12)}
+.wk-h-b{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.cell-top{display:flex;align-items:center;gap:6px}
+.rem{font-size:10.5px;font-weight:600;border-radius:7px;padding:2px 7px;line-height:1.3;display:inline-flex;align-items:center;gap:3px;max-width:160px;cursor:pointer}
+.rem.has{background:#fff7e6;color:#9a6a00;border:1px solid #ffe2a8}
+.rem.has span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rem.add{color:var(--faint);background:transparent;border:1px dashed var(--line-2);opacity:0;transition:.12s}
+.wk-h:hover .rem.add,.cell:hover .rem.add{opacity:1}
 .ev.alt{background:#fdeef6;color:var(--pink)}
 .ev.amber{background:#fbf1d9;color:#9a7400}
 
@@ -385,7 +392,7 @@ textarea.area{height:auto;min-height:80px;padding:10px 14px;resize:vertical;line
       <div class="field"><label>Tarea</label><input class="inp" id="tTitle" placeholder="Ej. Llamar a Grupo Adwake"></div>
       <div class="grid2">
         <div class="field"><label>Fecha</label><input class="inp" id="tDate" type="date"></div>
-        <div class="field"><label>Asignar a</label><select class="inp" id="tAssignee"></select></div>
+        <div class="field" id="fAssignee"><label>Asignar a</label><select class="inp" id="tAssignee"></select></div>
       </div>
       <div class="field"><label>Recomendación / trabajo realizado</label><textarea class="inp area" id="tNote" placeholder="Escribe una nota o recomendación del trabajo realizado (opcional)…"></textarea></div>
       <div class="field"><label>Fotos del trabajo</label>
@@ -459,7 +466,7 @@ window.sb = null;
 <script>
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const DOMAIN='@onepulso.online';
-const K={users:'op_users',session:'op_session',tasks:'op_tasks',clients:'op_clients',events:'op_events'};
+const K={users:'op_users',session:'op_session',tasks:'op_tasks',clients:'op_clients',events:'op_events',reminders:'op_reminders'};
 const load=(k,f)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):f;}catch(e){return f;}};
 const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}};
 const initials=s=>String(s).trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase()||'U';
@@ -486,21 +493,7 @@ const TODAY=new Date();
 
 /* ---------- Seed ---------- */
 function seed(){
-  if(!localStorage.getItem(K.events)) save(K.events,[
-    {id:101,date:'2026-09-02',t:'09:30 · Standup'},
-    {id:102,date:'2026-09-03',t:'11:00 · Discovery Nordic'},
-    {id:103,date:'2026-09-03',t:'16:00 · Revisión copy',c:'alt'},
-    {id:104,date:'2026-09-07',t:'10:00 · Comité semanal'},
-    {id:105,date:'2026-09-09',t:'09:30 · Standup'},
-    {id:106,date:'2026-09-10',t:'12:30 · Kickoff Cedra'},
-    {id:107,date:'2026-09-14',t:'10:00 · Comité semanal'},
-    {id:108,date:'2026-09-14',t:'17:00 · Cierre de mes',c:'amber'},
-    {id:109,date:'2026-09-16',t:'09:30 · Standup'},
-    {id:110,date:'2026-09-18',t:'11:30 · Formación interna',c:'amber'},
-    {id:111,date:'2026-09-21',t:'10:00 · Comité semanal'},
-    {id:112,date:'2026-09-23',t:'09:30 · Standup'},
-    {id:113,date:'2026-09-25',t:'15:00 · Demo Ridge',c:'alt'}
-  ]);
+  // reuniones eliminadas; ahora hay recordatorios por día (op_reminders)
   // usuarios: la autenticación es de Supabase (no se guardan en el navegador)
   if(!localStorage.getItem(K.tasks)) save(K.tasks,[
     {id:1,t:'Revisar respuestas de la campaña Vitalis',date:'2026-09-04',assignee:'team@onepulso.online',done:false},
@@ -517,6 +510,7 @@ function seed(){
   ]);
 }
 seed();
+try{localStorage.removeItem('op_events');}catch(e){}
 /* usuarios y contraseñas: gestionados por Supabase Auth */
 
 /* users helpers */
@@ -535,6 +529,7 @@ function whoTag(email,um){
 const color20=s=>'color-mix(in srgb,'+colorFor(s)+' 15%,#fff)';
 
 let me=null;
+const admin=()=>!!(me&&me.role==='admin');
 
 /* ============ LOGIN ============ */
 $('#year').textContent=new Date().getFullYear();
@@ -588,7 +583,7 @@ function go(view){
   $('#vwTitle').textContent=TITLES[view][0];$('#vwSub').textContent=TITLES[view][1];
   const btn=$('#primaryAction');
   if(view==='calendario'||view==='tareas'){btn.hidden=false;btn.textContent='+ Nueva tarea';btn.onclick=()=>openTask(null);}
-  else if(view==='clientes'){btn.hidden=false;btn.textContent='+ Nuevo cliente';btn.onclick=openClient;}
+  else if(view==='clientes'){if(admin()){btn.hidden=false;btn.textContent='+ Nuevo cliente';btn.onclick=openClient;}else btn.hidden=true;}
   else if(view==='usuarios'&&me&&me.role==='admin'){btn.hidden=false;btn.textContent='+ Crear usuario';btn.onclick=openUser;}
   else btn.hidden=true;
   closeSide();window.scrollTo({top:0});
@@ -614,21 +609,26 @@ function taskIndicators(t){
 }
 function taskChip(t,um){
   const tag=(t.assignee&&um[t.assignee])?whoTag(t.assignee,um):'';
-  return '<div class="tsk'+(t.done?' done':'')+'" draggable="true" data-task="'+t.id+'">'
-    +'<button class="tdel" data-del-task="'+t.id+'" title="Quitar tarea">×</button>'
+  const canEdit=admin()||(me&&t.assignee===me.email);
+  return '<div class="tsk'+(t.done?' done':'')+'" draggable="'+(canEdit?'true':'false')+'" data-task="'+t.id+'">'
+    +(canEdit?'<button class="tdel" data-del-task="'+t.id+'" title="Quitar tarea">×</button>':'')
     +'<div class="tsk-top"><button class="tcb" data-toggle="'+t.id+'" title="'+(t.done?'Reabrir':'Marcar terminada')+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 5 5L20 7"/></svg></button><span class="tt">'+esc(t.t)+'</span></div>'
     +'<div class="tsk-foot">'+tag+taskIndicators(t)+'</div></div>';
 }
-function cellInner(dt,tasks,events,um){
+function cellInner(dt,tasks,um){
   const iso=isoOf(dt);
   let h='';
-  events.filter(ev=>ev.date===iso).forEach(ev=>h+='<div class="ev'+(ev.c?' '+ev.c:'')+'"><span class="ev-t">'+esc(ev.t)+'</span><button class="evdel" data-del-event="'+ev.id+'" title="Quitar del calendario">×</button></div>');
   tasks.filter(t=>t.date===iso).forEach(t=>h+=taskChip(t,um));
   h+='<button class="addbtn" data-add="'+iso+'">+ tarea</button>';
   return h;
 }
+function reminderChip(iso,rem){
+  const r=rem[iso];
+  if(r) return '<button class="rem has" data-rem="'+iso+'"'+(admin()?' title="Editar recordatorio"':'')+'>📌 <span>'+esc(r)+'</span></button>';
+  return admin()?'<button class="rem add" data-rem="'+iso+'" title="Añadir recordatorio">+ nota</button>':'';
+}
 function renderCalendar(){
-  const wrap=$('#calWrap'), tasks=load(K.tasks,[]), events=load(K.events,[]), um=usersMap();
+  const wrap=$('#calWrap'), tasks=load(K.tasks,[]), reminders=load(K.reminders,{}), um=usersMap();
   if(calView==='semana'){
     const mon=startOfWeek(calDate), sun=new Date(mon);sun.setDate(mon.getDate()+6);
     $('#calTitle').textContent = mon.getMonth()===sun.getMonth()
@@ -637,7 +637,7 @@ function renderCalendar(){
     let h='<div class="wk">';
     for(let i=0;i<7;i++){
       const dt=new Date(mon);dt.setDate(mon.getDate()+i);
-      h+='<div class="wk-col'+(sameDay(dt,TODAY)?' today':'')+'" data-date="'+isoOf(dt)+'"><div class="wk-h"><span class="dn">'+DOW3[i]+'</span><span class="dnum">'+dt.getDate()+'</span></div><div class="wk-b">'+cellInner(dt,tasks,events,um)+'</div></div>';
+      h+='<div class="wk-col'+(sameDay(dt,TODAY)?' today':'')+'" data-date="'+isoOf(dt)+'"><div class="wk-h"><span class="dn">'+DOW3[i]+'</span><div class="wk-h-b"><span class="dnum">'+dt.getDate()+'</span>'+reminderChip(isoOf(dt),reminders)+'</div></div><div class="wk-b">'+cellInner(dt,tasks,um)+'</div></div>';
     }
     wrap.innerHTML=h+'</div>';
   } else {
@@ -652,7 +652,7 @@ function renderCalendar(){
       if(dnum<1){mm=m-1;dd=prevDays+dnum;if(mm<0){mm=11;yy--;}}
       else if(dnum>daysIn){mm=m+1;dd=dnum-daysIn;if(mm>11){mm=0;yy++;}}
       const dt=new Date(yy,mm,dd), isT=inMonth&&sameDay(dt,TODAY);
-      h+='<div class="cell'+(inMonth?'':' out')+(isT?' today':'')+'"'+(inMonth?' data-date="'+isoOf(dt)+'"':'')+'><span class="n">'+dd+'</span>'+(inMonth?cellInner(dt,tasks,events,um):'')+'</div>';
+      h+='<div class="cell'+(inMonth?'':' out')+(isT?' today':'')+'"'+(inMonth?' data-date="'+isoOf(dt)+'"':'')+'><div class="cell-top"><span class="n">'+dd+'</span>'+(inMonth?reminderChip(isoOf(dt),reminders):'')+'</div>'+(inMonth?cellInner(dt,tasks,um):'')+'</div>';
     }
     wrap.innerHTML=h+'</div>';
   }
@@ -667,10 +667,10 @@ $('#calNext').addEventListener('click',()=>{if(calView==='semana')calDate.setDat
 const calWrap=$('#calWrap');
 calWrap.addEventListener('click',e=>{
   const add=e.target.closest('.addbtn'); if(add){openTask(null,add.dataset.add);return;}
-  const evd=e.target.closest('.evdel'); if(evd){e.stopPropagation();deleteEvent(+evd.dataset.delEvent);return;}
-  const del=e.target.closest('.tdel'); if(del){e.stopPropagation();deleteTask(+del.dataset.delTask);return;}
-  const tog=e.target.closest('.tcb'); if(tog){e.stopPropagation();checkTask(+tog.dataset.toggle);return;}
-  const tsk=e.target.closest('.tsk'); if(tsk){openTask(+tsk.dataset.task);}
+  const rmb=e.target.closest('.rem'); if(rmb){e.stopPropagation();editReminder(rmb.dataset.rem);return;}
+  const del=e.target.closest('.tdel'); if(del){e.stopPropagation();if(canEditTask(+del.dataset.delTask))deleteTask(+del.dataset.delTask);return;}
+  const tog=e.target.closest('.tcb'); if(tog){e.stopPropagation();const id=+tog.dataset.toggle;if(canEditTask(id))checkTask(id);else toast('Solo puedes cambiar tus propias tareas');return;}
+  const tsk=e.target.closest('.tsk'); if(tsk){const id=+tsk.dataset.task;if(canEditTask(id))openTask(id);else toast('Solo el administrador puede editar esta tarea');}
 });
 calWrap.addEventListener('dragstart',e=>{const el=e.target.closest('.tsk');if(!el)return;e.dataTransfer.setData('text/plain',el.dataset.task);e.dataTransfer.effectAllowed='move';el.classList.add('dragging');});
 calWrap.addEventListener('dragend',e=>{const el=e.target.closest('.tsk');if(el)el.classList.remove('dragging');});
@@ -679,11 +679,12 @@ calWrap.addEventListener('dragleave',e=>{const cell=e.target.closest('[data-date
 calWrap.addEventListener('drop',e=>{
   const cell=e.target.closest('[data-date]');if(!cell)return;e.preventDefault();cell.classList.remove('dragover');
   const id=+e.dataTransfer.getData('text/plain'), tasks=load(K.tasks,[]), t=tasks.find(x=>x.id===id);
-  if(t&&t.date!==cell.dataset.date){t.date=cell.dataset.date;save(K.tasks,tasks);renderCalendar();renderTasks();updateCounts();toast('Tarea movida a '+fmtDate(cell.dataset.date));}
+  if(t&&(admin()||(me&&t.assignee===me.email))&&t.date!==cell.dataset.date){t.date=cell.dataset.date;save(K.tasks,tasks);renderCalendar();renderTasks();updateCounts();toast('Tarea movida a '+fmtDate(cell.dataset.date));}
 });
 const taskById=id=>load(K.tasks,[]).find(t=>t.id===id);
 function deleteTask(id){save(K.tasks,load(K.tasks,[]).filter(t=>t.id!==id));renderCalendar();renderTasks();updateCounts();toast('Tarea eliminada');}
-function deleteEvent(id){save(K.events,load(K.events,[]).filter(ev=>ev.id!==id));renderCalendar();toast('Evento eliminado');}
+function canEditTask(id){const t=taskById(id);return !!t&&(admin()||(me&&t.assignee===me.email));}
+function editReminder(iso){if(!admin())return;const all=load(K.reminders,{});const cur=all[iso]||'';const v=prompt('Recordatorio para el '+fmtDate(iso)+':',cur);if(v===null)return;if(v.trim()==='')delete all[iso];else all[iso]=v.trim();save(K.reminders,all);renderCalendar();}
 function reopenTask(id){const tasks=load(K.tasks,[]),t=tasks.find(x=>x.id===id);if(!t)return;t.done=false;save(K.tasks,tasks);renderCalendar();renderTasks();updateCounts();toast('Tarea reabierta');}
 function checkTask(id){const t=taskById(id);if(!t)return;if(t.done)reopenTask(id);else openTask(id,{complete:true});}
 
@@ -707,7 +708,10 @@ $('#tThumbs').addEventListener('click',e=>{const b=e.target.closest('[data-thumb
 
 function openTask(id,opt){
   const preset=typeof opt==='string'?opt:(opt&&opt.date), complete=opt&&opt.complete;
+  if(id&&!canEditTask(id)){toast('Solo el administrador puede editar esta tarea');return;}
+  const isAdmin=admin();
   optionsForUsers($('#tAssignee'), id?null:(me?me.email:''),'Sin asignar');
+  $('#fAssignee').hidden=!isAdmin; $('#tAssignee').disabled=!isAdmin;
   draftImages=[];
   if(id){const t=taskById(id);editingTask=id;$('#tTitle').value=t.t;$('#tDate').value=t.date||isoOf(TODAY);$('#tAssignee').value=t.assignee||'';$('#tNote').value=t.note||'';draftImages=(t.images||[]).slice();$('#tDone').checked=complete?true:!!t.done;$('#tModalTitle').textContent=complete?'Completar tarea':'Editar tarea';$('#tDelete').hidden=false;}
   else{editingTask=null;$('#tTitle').value='';$('#tDate').value=preset||isoOf(TODAY);$('#tAssignee').value=me?me.email:'';$('#tNote').value='';$('#tDone').checked=false;$('#tModalTitle').textContent='Nueva tarea';$('#tDelete').hidden=true;}
@@ -716,7 +720,9 @@ function openTask(id,opt){
 }
 $('#tSave').addEventListener('click',()=>{
   const title=$('#tTitle').value.trim();if(!title){$('#tTitle').focus();return;}
-  const patch={t:title,date:$('#tDate').value||isoOf(TODAY),assignee:$('#tAssignee').value,done:$('#tDone').checked,note:$('#tNote').value.trim(),images:draftImages.slice()};
+  if(editingTask&&!canEditTask(editingTask)){toast('Sin permiso');return;}
+  const assignee=admin()?$('#tAssignee').value:(me?me.email:'');
+  const patch={t:title,date:$('#tDate').value||isoOf(TODAY),assignee:assignee,done:$('#tDone').checked,note:$('#tNote').value.trim(),images:draftImages.slice()};
   const tasks=load(K.tasks,[]);
   if(editingTask){const t=tasks.find(x=>x.id===editingTask);Object.assign(t,patch);}
   else tasks.unshift(Object.assign({id:Date.now()},patch));
@@ -748,7 +754,7 @@ function renderTasks(){
   $('#taskList').innerHTML=h;
 }
 $('#taskList').addEventListener('click',e=>{
-  const tog=e.target.closest('.cb');if(tog){e.stopPropagation();checkTask(+tog.dataset.toggle);return;}
+  const tog=e.target.closest('.cb');if(tog){e.stopPropagation();const id=+tog.dataset.toggle;if(canEditTask(id))checkTask(id);else toast('Solo puedes cambiar tus propias tareas');return;}
   const row=e.target.closest('.tk');if(row)openTask(+row.dataset.id);
 });
 
