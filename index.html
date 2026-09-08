@@ -261,6 +261,20 @@ textarea.area{height:auto;min-height:80px;padding:10px 14px;resize:vertical;line
 .modal{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(20,19,25,.42)}
 .modal.show{display:flex}
 .modal .box{width:100%;max-width:460px;background:#fff;border-radius:18px;box-shadow:var(--sh-lg);animation:rise .3s both;overflow:hidden}
+.modal .box.box-wide{max-width:560px}
+.nt-list{display:flex;flex-direction:column;gap:8px;max-height:230px;overflow:auto;padding:2px}
+.nt-empty{font-size:13px;color:var(--faint);padding:14px;text-align:center;background:var(--surface);border-radius:12px}
+.nt-list .nt-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;margin:0;border:1px solid var(--line);border-radius:12px;cursor:pointer;transition:.12s;text-transform:none;letter-spacing:normal;font-size:14px;color:var(--ink)}
+.nt-list .nt-item:hover{border-color:color-mix(in srgb,var(--purple) 40%,transparent);background:var(--purple-xl)}
+.nt-list .nt-item input{margin-top:2px;width:18px;height:18px;accent-color:var(--purple);flex:none;cursor:pointer}
+.nt-list .nt-item .nt-body{min-width:0;flex:1}
+.nt-list .nt-item .nt-t{font-size:14px;font-weight:600;color:var(--ink)}
+.nt-list .nt-item.done .nt-t{text-decoration:line-through;color:var(--faint)}
+.nt-list .nt-item .nt-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:3px}
+.nt-badge{font-size:11.5px;font-weight:600;color:var(--purple-d);background:var(--purple-l);padding:1px 8px;border-radius:20px;text-transform:none;letter-spacing:normal}
+.nt-badge.g{color:#0a7d47;background:#e4f7ee}
+.nt-badge.r{color:#57565F;background:var(--neutral)}
+.nt-genrow{display:flex;align-items:center;gap:10px;margin:2px 0 16px}
 .modal .box .h{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--line)}
 .modal .box .h h3{font-size:17px;font-weight:600}
 .modal .box .b{padding:20px 22px;max-height:72vh;overflow:auto}
@@ -342,7 +356,7 @@ textarea.area{height:auto;min-height:80px;padding:10px 14px;resize:vertical;line
     <header class="topbar">
       <button class="menu-btn" id="menuBtn"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
       <div class="title"><h1 id="vwTitle">Calendario</h1><p id="vwSub">Semana del equipo</p></div>
-      <div class="right"><span class="smtp-tag" id="smtpTag" hidden>📧 <b id="smtpTagEmail"></b></span><button class="btn btn-ghost btn-sm" id="smtpBtn" hidden>📧 Conectar correo</button><button class="btn btn-primary btn-sm" id="primaryAction" hidden>Acción</button></div>
+      <div class="right"><span class="smtp-tag" id="smtpTag" hidden>📧 <b id="smtpTagEmail"></b></span><button class="btn btn-ghost btn-sm" id="notifyBtn" hidden>✉️ Avisar tareas</button><button class="btn btn-ghost btn-sm" id="smtpBtn" hidden>📧 Conectar correo</button><button class="btn btn-primary btn-sm" id="primaryAction" hidden>Acción</button></div>
     </header>
 
     <!-- Calendario -->
@@ -495,6 +509,23 @@ textarea.area{height:auto;min-height:80px;padding:10px 14px;resize:vertical;line
       <p class="hint">Sirve para avisar por email a los responsables de las tareas. La contraseña se guarda protegida (solo tú, el admin, la manejas). Puerto 465 = SSL · 587 = STARTTLS.</p>
     </div>
     <div class="f"><button class="btn btn-ghost btn-sm" id="smTest">Enviar prueba</button><button class="btn btn-ghost btn-sm push" data-close>Cancelar</button><button class="btn btn-primary btn-sm" id="smSave">Guardar</button></div>
+  </div>
+</div>
+
+<div class="modal" id="mNotify">
+  <div class="box box-wide"><div class="h"><h3>Avisar de tareas por correo</h3><button class="x" data-close><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="b">
+      <div class="alert" id="ntAlert"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg><span id="ntAlertMsg"></span></div>
+      <div class="field"><label>Avisar a</label><select class="inp" id="ntWho"></select></div>
+      <div class="field"><label>Tareas a incluir <span class="faint" id="ntCount"></span></label>
+        <div id="ntTasks" class="nt-list"></div>
+      </div>
+      <div class="nt-genrow"><button class="btn btn-ghost btn-sm" id="ntGen">✨ Redactar con IA</button><span class="faint" id="ntGenStatus"></span></div>
+      <div class="field"><label>Asunto</label><input class="inp" id="ntSubject" placeholder="Asunto del correo"></div>
+      <div class="field"><label>Mensaje</label><textarea class="inp area" id="ntMsg" rows="6" placeholder="El mensaje del correo…"></textarea></div>
+      <p class="hint">Se envía desde tu correo SMTP conectado. El listado de tareas seleccionadas se añade automáticamente al final del correo.</p>
+    </div>
+    <div class="f"><button class="btn btn-ghost btn-sm push" data-close>Cancelar</button><button class="btn btn-primary btn-sm" id="ntSend">Enviar correo</button></div>
   </div>
 </div>
 
@@ -674,7 +705,7 @@ function enterApp(u){
   me=u;
   $('#login').hidden=true;$('#app').hidden=false;
   $('#uName').textContent=u.name;$('#uEmail').textContent=u.email;$('#uAv').textContent=initials(u.name);$('#uAv').style.background=colorFor(u.name);
-  const admin=u.role==='admin';$('#adminLbl').hidden=!admin;$('#navUsers').hidden=!admin;$('#smtpBtn').hidden=!admin;loadSmtpTag();
+  const admin=u.role==='admin';$('#adminLbl').hidden=!admin;$('#navUsers').hidden=!admin;$('#smtpBtn').hidden=!admin;$('#notifyBtn').hidden=!admin;loadSmtpTag();
   TODAY=new Date(); calView='semana'; calDate=new Date(TODAY);
   $('#segWeek').classList.add('on'); $('#segMonth').classList.remove('on');
   renderAll();go('calendario');toast('Sesión iniciada · '+u.name);
@@ -1096,6 +1127,93 @@ async function loadSmtpTag(){
     else { $('#smtpTag').hidden=true; }
   }catch(_){ $('#smtpTag').hidden=true; }
 }
+/* ----- Avisar de tareas por correo (admin) ----- */
+$('#notifyBtn').addEventListener('click',openNotify);
+function ntErr(m){$('#ntAlertMsg').textContent=m;$('#ntAlert').classList.add('show');}
+function openNotify(){
+  if(!admin())return;
+  $('#ntAlert').classList.remove('show');
+  $('#ntSubject').value=''; $('#ntMsg').value=''; $('#ntGenStatus').textContent='';
+  const who=$('#ntWho');
+  const opts=profilesCache.slice().sort((a,b)=>(a.name||a.email).localeCompare(b.name||b.email));
+  who.innerHTML=opts.map(u=>'<option value="'+esc(u.email)+'">'+esc(u.name||u.email)+(u.role==='admin'?' (admin)':'')+'</option>').join('');
+  const first=opts.find(u=>u.role!=='admin'&&u.email!==me.email)||opts.find(u=>u.email!==me.email)||opts[0];
+  if(first) who.value=first.email;
+  renderNtTasks();
+  if($('#smtpTag').hidden) ntErr('Aún no has conectado un correo SMTP. Puedes preparar el aviso, pero para enviarlo conecta el correo primero.');
+  openModal('mNotify');
+}
+$('#ntWho').addEventListener('change',()=>{renderNtTasks();$('#ntSubject').value='';$('#ntMsg').value='';$('#ntGenStatus').textContent='';});
+function ntTasksFor(email){
+  const one=DB.tasks.filter(t=>t.assignee===email).map(t=>({key:'t'+t.id,title:t.t,date:t.date||null,note:t.details||t.note||null,done:!!t.done,rec:false}));
+  one.sort((a,b)=>{ if(a.done!==b.done)return a.done?1:-1; return String(a.date||'9999').localeCompare(String(b.date||'9999')); });
+  const rec=DB.recurring.filter(r=>r.assignee===email).map(r=>({key:'r'+r.id,title:r.title,date:null,note:r.details||null,done:false,rec:true}));
+  return one.concat(rec);
+}
+function renderNtTasks(){
+  const email=$('#ntWho').value, box=$('#ntTasks'), items=ntTasksFor(email);
+  if(!items.length){ box.innerHTML='<div class="nt-empty">Este compañero no tiene tareas asignadas todavía.</div>'; ntUpdCount(); return; }
+  box.innerHTML=items.map(it=>{
+    const checked=(!it.done&&!it.rec)?' checked':'';
+    const badges=(it.rec?'<span class="nt-badge r">🔁 cada semana</span>':'')+
+      (it.date?'<span class="nt-badge">'+esc(fmtDate(it.date))+'</span>':(!it.rec?'<span class="nt-badge r">Sin fecha</span>':''))+
+      (it.done?'<span class="nt-badge g">Hecha</span>':'');
+    return '<label class="nt-item'+(it.done?' done':'')+'" data-key="'+esc(it.key)+'">'+
+      '<input type="checkbox"'+checked+'>'+
+      '<div class="nt-body"><div class="nt-t">'+esc(it.title)+'</div>'+
+      (badges?'<div class="nt-meta">'+badges+'</div>':'')+
+      (it.note?'<div class="nt-meta"><span class="faint" style="font-size:12.5px">'+esc(it.note)+'</span></div>':'')+
+      '</div></label>';
+  }).join('');
+  box.querySelectorAll('input').forEach(c=>c.addEventListener('change',ntUpdCount));
+  ntUpdCount();
+}
+function ntSelected(){
+  const items=ntTasksFor($('#ntWho').value), map={}; items.forEach(it=>map[it.key]=it);
+  const out=[];
+  $('#ntTasks').querySelectorAll('.nt-item').forEach(el=>{ if(el.querySelector('input').checked){ const it=map[el.dataset.key]; if(it) out.push({title:it.title,date:it.date,note:it.note}); } });
+  return out;
+}
+function ntUpdCount(){ const n=ntSelected().length; $('#ntCount').textContent=n?('· '+n+' seleccionada'+(n>1?'s':'')):''; }
+function localComposeJS(name,tasks){
+  const n=tasks.length, fn=firstName(name);
+  return {subject:n===1?'Tienes una tarea nueva en el portal':('Tienes '+n+' tareas nuevas en el portal'),
+    message:'Hola'+(fn?' '+fn:'')+',\n\nTe he asignado '+(n===1?'una tarea':n+' tareas')+' en el Portal del equipo. Cuando puedas, entra al calendario para verlas con detalle y ve marcándolas como hechas según las completes.\n\n¡Gracias!'};
+}
+$('#ntGen').addEventListener('click',async ()=>{
+  const to=$('#ntWho').value, sel=ntSelected();
+  if(!sel.length) return ntErr('Marca al menos una tarea para redactar el aviso.');
+  $('#ntAlert').classList.remove('show');
+  const name=(profilesCache.find(u=>u.email===to)||{}).name||to;
+  $('#ntGen').disabled=true; $('#ntGenStatus').textContent='Redactando…';
+  try{
+    const {data,error}=await sb.functions.invoke('notify-tasks',{body:{action:'compose',to,name,tasks:sel}});
+    if(error) throw new Error(error.message);
+    if(!data||!data.ok) throw new Error((data&&data.error)||'No se pudo redactar');
+    $('#ntSubject').value=data.subject||''; $('#ntMsg').value=data.message||'';
+    $('#ntGenStatus').textContent=data.ai?'Redactado con IA ✓':'Borrador listo ✓';
+  }catch(e){
+    const d=localComposeJS(name,sel); $('#ntSubject').value=d.subject; $('#ntMsg').value=d.message;
+    $('#ntGenStatus').textContent='Borrador listo';
+  }finally{ $('#ntGen').disabled=false; }
+});
+$('#ntSend').addEventListener('click',async ()=>{
+  const to=$('#ntWho').value, sel=ntSelected();
+  $('#ntAlert').classList.remove('show');
+  if(!to) return ntErr('Elige a quién avisar.');
+  if(!sel.length) return ntErr('Marca al menos una tarea.');
+  if($('#smtpTag').hidden) return ntErr('Conecta primero un correo SMTP (botón «Conectar correo»).');
+  let subject=$('#ntSubject').value.trim(), message=$('#ntMsg').value.trim();
+  if(!subject||!message){ const d=localComposeJS((profilesCache.find(u=>u.email===to)||{}).name||to,sel); subject=subject||d.subject; message=message||d.message; }
+  $('#ntSend').disabled=true; toast('Enviando correo…');
+  try{
+    const {data,error}=await sb.functions.invoke('notify-tasks',{body:{action:'send',to,subject,message,tasks:sel}});
+    if(error) throw new Error(error.message);
+    if(!data||!data.ok) throw new Error((data&&data.error)||'No se pudo enviar');
+    closeModal('mNotify'); toast('📧 Aviso enviado a '+to);
+  }catch(e){ ntErr('No se pudo enviar: '+e.message); }
+  finally{ $('#ntSend').disabled=false; }
+});
 function openModal(id){$('#'+id).classList.add('show');}
 function closeModal(id){$('#'+id).classList.remove('show');}
 $$('.modal').forEach(m=>m.addEventListener('click',e=>{if(e.target===m||e.target.closest('[data-close]'))m.classList.remove('show');}));
