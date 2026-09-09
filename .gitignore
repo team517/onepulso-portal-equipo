@@ -5,3 +5,5 @@ desktop.ini
 .vscode/
 .idea/
 *.log
+
+supabase/.temp/

@@ -284,6 +284,30 @@ textarea.area{height:auto;min-height:80px;padding:10px 14px;resize:vertical;line
 .prov-help b{color:var(--ink)}
 .prov-help ol{margin:8px 0 4px;padding-left:20px;display:flex;flex-direction:column;gap:5px}
 .prov-help a{color:var(--purple-d);font-weight:600}
+.rm-list{display:flex;flex-direction:column;gap:8px;margin-bottom:6px}
+.rm-empty{font-size:13px;color:var(--faint);padding:14px;text-align:center;background:var(--surface);border-radius:12px}
+.rm-item{display:flex;align-items:center;gap:12px;padding:11px 14px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.rm-item.off{opacity:.55}
+.rm-time{font-size:20px;font-weight:700;color:var(--ink);letter-spacing:-.01em;min-width:58px}
+.rm-info{flex:1;min-width:0}
+.rm-info .rm-who{font-size:13.5px;font-weight:600;color:var(--ink)}
+.rm-info .rm-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.rm-info .rm-msg{font-size:12px;color:var(--faint);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rm-acts{display:flex;align-items:center;gap:4px;flex:none}
+.rm-iconbtn{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;color:var(--muted);cursor:pointer;background:transparent;border:none}
+.rm-iconbtn:hover{background:var(--neutral);color:var(--ink)}
+.rm-iconbtn.del:hover{background:#fdecec;color:#d6006c}
+.sw{position:relative;width:38px;height:22px;flex:none;cursor:pointer}
+.sw input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
+.sw .track{position:absolute;inset:0;background:var(--line-2);border-radius:20px;transition:.15s}
+.sw .knob{position:absolute;top:3px;left:3px;width:16px;height:16px;background:#fff;border-radius:50%;transition:.15s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.sw input:checked~.track{background:var(--purple)}
+.sw input:checked~.knob{left:19px}
+.rm-new{border-top:1px dashed var(--line-2);margin-top:14px;padding-top:16px}
+.rm-new-h{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:12px}
+.rm-quick{display:flex;gap:8px;margin-top:9px}
+.rm-quick button{font-size:12px;font-weight:600;color:var(--purple-d);background:var(--purple-xl);border:1px solid var(--purple-l);border-radius:8px;padding:4px 10px;cursor:pointer}
+.rm-quick button:hover{background:var(--purple-l)}
 .modal .box .h{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--line)}
 .modal .box .h h3{font-size:17px;font-weight:600}
 .modal .box .b{padding:20px 22px;max-height:72vh;overflow:auto}
@@ -365,7 +389,7 @@ textarea.area{height:auto;min-height:80px;padding:10px 14px;resize:vertical;line
     <header class="topbar">
       <button class="menu-btn" id="menuBtn"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
       <div class="title"><h1 id="vwTitle">Calendario</h1><p id="vwSub">Semana del equipo</p></div>
-      <div class="right"><span class="smtp-tag" id="smtpTag" hidden>📧 <b id="smtpTagEmail"></b></span><button class="btn btn-ghost btn-sm" id="notifyBtn" hidden>✉️ Avisar tareas</button><button class="btn btn-ghost btn-sm" id="smtpBtn" hidden>📧 Conectar correo</button><button class="btn btn-primary btn-sm" id="primaryAction" hidden>Acción</button></div>
+      <div class="right"><span class="smtp-tag" id="smtpTag" hidden>📧 <b id="smtpTagEmail"></b></span><button class="btn btn-ghost btn-sm" id="remindBtn" hidden>⏰ Recordatorios</button><button class="btn btn-ghost btn-sm" id="notifyBtn" hidden>✉️ Avisar tareas</button><button class="btn btn-ghost btn-sm" id="smtpBtn" hidden>📧 Conectar correo</button><button class="btn btn-primary btn-sm" id="primaryAction" hidden>Acción</button></div>
     </header>
 
     <!-- Calendario -->
@@ -556,6 +580,31 @@ textarea.area{height:auto;min-height:80px;padding:10px 14px;resize:vertical;line
   </div>
 </div>
 
+<div class="modal" id="mReminders">
+  <div class="box box-wide"><div class="h"><h3>Recordatorios programados</h3><button class="x" data-close><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="b">
+      <div class="alert" id="rmAlert"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg><span id="rmAlertMsg"></span></div>
+      <div id="rmList" class="rm-list"></div>
+      <div class="rm-new">
+        <div class="rm-new-h">➕ Nuevo recordatorio</div>
+        <div class="grid2">
+          <div class="field"><label>Hora</label><input class="inp" id="rmTime" type="time"></div>
+          <div class="field"><label>Avisar a</label><select class="inp" id="rmTarget"></select></div>
+        </div>
+        <div class="field"><label>Días de la semana</label>
+          <div class="wd-row" id="rmWdRow"><button type="button" class="wd" data-wd="0">L</button><button type="button" class="wd" data-wd="1">M</button><button type="button" class="wd" data-wd="2">X</button><button type="button" class="wd" data-wd="3">J</button><button type="button" class="wd" data-wd="4">V</button><button type="button" class="wd" data-wd="5">S</button><button type="button" class="wd" data-wd="6">D</button></div>
+          <div class="rm-quick"><button type="button" data-days="all">Todos los días</button><button type="button" data-days="work">Lun–Vie</button></div>
+        </div>
+        <div class="field"><label>Mensaje (opcional)</label><textarea class="inp area" id="rmMsg" rows="2" placeholder="Ej. Recuerda revisar y cerrar tus tareas de hoy."></textarea></div>
+        <label class="check"><input type="checkbox" id="rmIncl" checked> <b style="font-weight:600">Incluir las tareas de hoy del destinatario en el correo</b></label>
+        <div style="margin-top:12px"><button class="btn btn-primary btn-sm" id="rmAdd">Añadir recordatorio</button></div>
+      </div>
+      <p class="hint">A la hora indicada (hora de España) se envía un correo por SMTP. Puedes programar varios. Escribe <b>{nombre}</b> en el mensaje y se sustituye por el nombre de cada persona.</p>
+    </div>
+    <div class="f"><button class="btn btn-ghost btn-sm push" data-close>Cerrar</button></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m5 12 5 5L20 7"/></svg><span id="toastMsg"></span></div>
 
 <!-- Config inyectada por EasyPanel (envsubst desde SUPABASE_URL / SUPABASE_ANON_KEY) -->
@@ -587,7 +636,7 @@ const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const DOMAIN='@onepulso.online';
 const K={users:'op_users',session:'op_session',tasks:'op_tasks',clients:'op_clients',events:'op_events',reminders:'op_reminders',notes:'op_notes'};
 /* ===== Datos compartidos en Supabase (con caché en memoria) ===== */
-const DB={tasks:[],clients:[],reminders:{},notes:'',recurring:[]};
+const DB={tasks:[],clients:[],reminders:{},notes:'',recurring:[],remindersSched:[]};
 const _lsLoad=(k,f)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):f;}catch(e){return f;}};
 const _lsSave=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}};
 function load(k,f){
@@ -629,14 +678,15 @@ function kvUpsert(k,v){ if(!window.sb)return; (async()=>{try{const {error}=await
 async function loadAll(){
   if(!window.sb) return;
   try{
-    const [tk,cl,kv,rc]=await Promise.all([sb.from('tasks').select('*').order('created_at'),sb.from('clients').select('*').order('created_at'),sb.from('app_kv').select('*'),sb.from('recurring').select('*').order('created_at')]);
+    const [tk,cl,kv,rc,rs]=await Promise.all([sb.from('tasks').select('*').order('created_at'),sb.from('clients').select('*').order('created_at'),sb.from('app_kv').select('*'),sb.from('recurring').select('*').order('created_at'),sb.from('reminders_sched').select('*').order('time')]);
     DB.tasks=(tk.data||[]).map(r=>({id:r.id,t:r.title,date:r.date,assignee:r.assignee||'',done:!!r.done,note:r.note||'',details:r.details||'',rec_id:r.rec_id||null,creator:r.creator||null,images:r.images||[]}));
     DB.clients=(cl.data||[]).map(r=>({id:r.id,name:r.name,email:r.email||'',owner:r.owner||'',status:r.status||'on'}));
     DB.recurring=(rc.data||[]).map(r=>({id:r.id,title:r.title,time:r.time||'',weekdays:r.weekdays||[],assignee:r.assignee||'',details:r.details||''}));
+    DB.remindersSched=((rs&&rs.data)||[]).map(r=>({id:r.id,title:r.title||'',message:r.message||'',time:r.time||'',weekdays:r.weekdays||[],target:r.target||'all',include_tasks:r.include_tasks!==false,active:r.active!==false}));
     const m={};(kv.data||[]).forEach(r=>m[r.k]=r.v); DB.reminders=m.reminders||{}; DB.notes=(m.notes&&m.notes.text)||'';
   }catch(e){console.warn('loadAll',e);}
 }
-function rerender(){ if(!document.getElementById('app').hidden){renderCalendar();renderTasks();renderClients();renderNotes();updateCounts();} }
+function rerender(){ if(!document.getElementById('app').hidden){renderCalendar();renderTasks();renderClients();renderNotes();updateCounts();if($('#mReminders').classList.contains('show'))renderReminders();} }
 let rtChan=null,refreshT=null;
 function subscribeRealtime(){
   if(!window.sb||rtChan)return;
@@ -645,6 +695,7 @@ function subscribeRealtime(){
     .on('postgres_changes',{event:'*',schema:'public',table:'clients'},scheduleRefresh)
     .on('postgres_changes',{event:'*',schema:'public',table:'app_kv'},scheduleRefresh)
     .on('postgres_changes',{event:'*',schema:'public',table:'recurring'},scheduleRefresh)
+    .on('postgres_changes',{event:'*',schema:'public',table:'reminders_sched'},scheduleRefresh)
     .subscribe();
 }
 function scheduleRefresh(){clearTimeout(refreshT);refreshT=setTimeout(async()=>{await loadAll();rerender();},350);}
@@ -732,7 +783,7 @@ function enterApp(u){
   me=u;
   $('#login').hidden=true;$('#app').hidden=false;
   $('#uName').textContent=u.name;$('#uEmail').textContent=u.email;$('#uAv').textContent=initials(u.name);$('#uAv').style.background=colorFor(u.name);
-  const admin=u.role==='admin';$('#adminLbl').hidden=!admin;$('#navUsers').hidden=!admin;$('#smtpBtn').hidden=!admin;$('#notifyBtn').hidden=!admin;loadSmtpTag();
+  const admin=u.role==='admin';$('#adminLbl').hidden=!admin;$('#navUsers').hidden=!admin;$('#smtpBtn').hidden=!admin;$('#notifyBtn').hidden=!admin;$('#remindBtn').hidden=!admin;loadSmtpTag();
   TODAY=new Date(); calView='semana'; calDate=new Date(TODAY);
   $('#segWeek').classList.add('on'); $('#segMonth').classList.remove('on');
   renderAll();go('calendario');toast('Sesión iniciada · '+u.name);
@@ -1256,6 +1307,83 @@ $('#ntSend').addEventListener('click',async ()=>{
     closeModal('mNotify'); toast('📧 Aviso enviado a '+to);
   }catch(e){ ntErr('No se pudo enviar: '+e.message); }
   finally{ $('#ntSend').disabled=false; }
+});
+/* ----- Recordatorios programados (admin) ----- */
+const WD_SHORT=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+function rmErr(m){$('#rmAlertMsg').textContent=m;$('#rmAlert').classList.add('show');}
+function daysLabel(wds){
+  const a=(wds||[]).slice().sort((x,y)=>x-y);
+  if(a.length===7) return 'Todos los días';
+  if(a.length===5 && a.join()==='0,1,2,3,4') return 'Lun–Vie';
+  if(!a.length) return 'Ningún día';
+  return a.map(d=>WD_SHORT[d]).join(', ');
+}
+function targetLabel(t){ if(t==='all') return 'Todo el equipo'; const u=profilesCache.find(u=>u.email===t); return u?(u.name||u.email):t; }
+$('#remindBtn').addEventListener('click',openReminders);
+function openReminders(){
+  if(!admin())return;
+  $('#rmAlert').classList.remove('show');
+  $('#rmTarget').innerHTML='<option value="all">Todo el equipo</option>'+profilesCache.map(u=>'<option value="'+esc(u.email)+'">'+esc(u.name||u.email)+'</option>').join('');
+  $('#rmTime').value=''; $('#rmMsg').value=''; $('#rmIncl').checked=true; rmSetWeekdays([0,1,2,3,4,5,6]);
+  renderReminders();
+  if($('#smtpTag').hidden) rmErr('Aún no has conectado un correo SMTP. Puedes programar recordatorios, pero para que se envíen conecta el correo (botón «Conectar correo»).');
+  openModal('mReminders');
+}
+function rmSetWeekdays(arr){$$('#rmWdRow .wd').forEach(b=>b.classList.toggle('on',(arr||[]).includes(+b.dataset.wd)));}
+function rmGetWeekdays(){return $$('#rmWdRow .wd.on').map(b=>+b.dataset.wd).sort((a,b)=>a-b);}
+$('#rmWdRow').addEventListener('click',e=>{const b=e.target.closest('.wd');if(b)b.classList.toggle('on');});
+$$('#mReminders .rm-quick button').forEach(b=>b.addEventListener('click',()=>rmSetWeekdays(b.dataset.days==='work'?[0,1,2,3,4]:[0,1,2,3,4,5,6])));
+function renderReminders(){
+  const box=$('#rmList'); const list=DB.remindersSched.slice().sort((a,b)=>String(a.time).localeCompare(String(b.time)));
+  if(!list.length){ box.innerHTML='<div class="rm-empty">No hay recordatorios programados todavía. Crea uno abajo.</div>'; return; }
+  box.innerHTML=list.map(r=>{
+    const sub=daysLabel(r.weekdays)+' · '+targetLabel(r.target)+(r.include_tasks?' · con tareas':'');
+    return '<div class="rm-item'+(r.active?'':' off')+'" data-id="'+r.id+'">'+
+      '<div class="rm-time">'+esc(r.time||'—')+'</div>'+
+      '<div class="rm-info"><div class="rm-who">'+esc(sub)+'</div>'+
+      (r.message?'<div class="rm-msg">'+esc(r.message)+'</div>':'')+'</div>'+
+      '<div class="rm-acts">'+
+        '<button class="rm-iconbtn test" title="Enviar ahora (prueba)"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></button>'+
+        '<label class="sw" title="Activar/pausar"><input type="checkbox" class="tgl"'+(r.active?' checked':'')+'><span class="track"></span><span class="knob"></span></label>'+
+        '<button class="rm-iconbtn del" title="Eliminar"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>'+
+      '</div></div>';
+  }).join('');
+}
+$('#rmAdd').addEventListener('click',async ()=>{
+  $('#rmAlert').classList.remove('show');
+  const time=$('#rmTime').value.trim();
+  if(!time) return rmErr('Pon una hora para el recordatorio.');
+  const weekdays=rmGetWeekdays(); if(!weekdays.length) return rmErr('Marca al menos un día de la semana.');
+  const row={id:Date.now(),title:'Recordatorio de tareas',message:$('#rmMsg').value.trim(),time,weekdays,target:$('#rmTarget').value||'all',include_tasks:$('#rmIncl').checked,active:true,created_by:me.email,created_at:new Date().toISOString()};
+  DB.remindersSched.push({id:row.id,title:row.title,message:row.message,time:row.time,weekdays:row.weekdays,target:row.target,include_tasks:row.include_tasks,active:true});
+  renderReminders();
+  const ok=await upsertRow('reminders_sched',row);
+  if(ok){ $('#rmTime').value=''; $('#rmMsg').value=''; toast('Recordatorio programado · '+time); }
+});
+$('#rmList').addEventListener('click',async e=>{
+  const item=e.target.closest('.rm-item'); if(!item)return; const id=+item.dataset.id;
+  const r=DB.remindersSched.find(x=>x.id===id); if(!r)return;
+  if(e.target.closest('.rm-iconbtn.del')){
+    if(!confirm('¿Eliminar este recordatorio de las '+r.time+'?'))return;
+    DB.remindersSched=DB.remindersSched.filter(x=>x.id!==id); renderReminders();
+    await removeRow('reminders_sched',id); toast('Recordatorio eliminado'); return;
+  }
+  if(e.target.closest('.rm-iconbtn.test')){
+    toast('Enviando recordatorio de prueba…');
+    try{ const {data,error}=await sb.functions.invoke('send-reminders',{body:{action:'test',id}});
+      if(error) throw new Error(error.message);
+      if(!data||!data.ok) throw new Error((data&&data.error)||'No se pudo');
+      toast(data.sent>0?('📧 Enviado a '+data.sent+' '+(data.sent>1?'personas':'persona')):'Nadie a quien enviar (sin tareas hoy)');
+    }catch(err){ rmErr('No se pudo enviar la prueba: '+err.message); }
+  }
+});
+$('#rmList').addEventListener('change',async e=>{
+  const tgl=e.target.closest('.tgl'); if(!tgl)return;
+  const item=e.target.closest('.rm-item'); const id=+item.dataset.id;
+  const r=DB.remindersSched.find(x=>x.id===id); if(!r)return;
+  r.active=tgl.checked; item.classList.toggle('off',!r.active);
+  await updateRow('reminders_sched',id,{active:r.active});
+  toast(r.active?'Recordatorio activado':'Recordatorio pausado');
 });
 function openModal(id){$('#'+id).classList.add('show');}
 function closeModal(id){$('#'+id).classList.remove('show');}
