@@ -476,12 +476,17 @@ textarea.area{height:auto;min-height:80px;padding:10px 14px;resize:vertical;line
         <div class="field" id="fAssignee"><label>Asignar a</label><select class="inp" id="tAssignee"></select></div>
       </div>
       <div class="field" id="fDesc"><label>Descripción (qué hay que hacer)</label><textarea class="inp area" id="tDesc" placeholder="Describe la tarea para quien la haga (opcional)…"></textarea></div>
+      <div class="grid2" id="fRemind">
+        <div class="field"><label>Hora (opcional)</label><input class="inp" id="tTimeOne" type="time"></div>
+        <div class="field"><label>⏰ Recordatorio por email</label><select class="inp" id="tRemind"><option value="">Sin recordatorio</option><option value="0">A la hora</option><option value="5">5 min antes</option><option value="10">10 min antes</option><option value="15">15 min antes</option><option value="30">30 min antes</option><option value="60">1 hora antes</option><option value="120">2 horas antes</option><option value="1440">1 día antes</option></select></div>
+      </div>
       <div class="field" id="fRepeat" hidden>
         <label class="check"><input type="checkbox" id="tRepeatOn"> <b style="font-weight:600">🔁 Repetir cada semana</b> <span class="faint" style="font-weight:400">(si no, es una tarea de un solo día)</span></label>
         <div id="repeatOpts" hidden style="margin-top:10px">
           <div class="wd-row" id="wdRow"><button type="button" class="wd" data-wd="0">L</button><button type="button" class="wd" data-wd="1">M</button><button type="button" class="wd" data-wd="2">X</button><button type="button" class="wd" data-wd="3">J</button><button type="button" class="wd" data-wd="4">V</button><button type="button" class="wd" data-wd="5">S</button><button type="button" class="wd" data-wd="6">D</button></div>
           <input class="inp" id="tTime" placeholder="Hora (ej. 09:30) — opcional" style="margin-top:9px;max-width:220px">
-          <p class="hint" style="margin-top:8px">Se repite en los días marcados, todas las semanas (para siempre).</p>
+          <div class="field" style="margin-top:9px"><label>⏰ Recordatorio por email</label><select class="inp" id="tRemindRec" style="max-width:220px"><option value="">Sin recordatorio</option><option value="0">A la hora</option><option value="5">5 min antes</option><option value="10">10 min antes</option><option value="15">15 min antes</option><option value="30">30 min antes</option><option value="60">1 hora antes</option><option value="120">2 horas antes</option><option value="1440">1 día antes</option></select></div>
+          <p class="hint" style="margin-top:8px">Se repite en los días marcados, todas las semanas (para siempre). El recordatorio avisa al responsable por email a la hora indicada.</p>
         </div>
       </div>
       <div class="field" id="fNote"><label>Recomendación / trabajo realizado</label><textarea class="inp area" id="tNote" placeholder="Escribe una nota o recomendación del trabajo realizado (opcional)…"></textarea></div>
@@ -656,7 +661,7 @@ function save(k,v){
   if(k===K.notes){ DB.notes=v||''; clearTimeout(notesSaveT); notesSaveT=setTimeout(()=>{ const el=document.getElementById('genNotes'); const txt=el?el.value:DB.notes; DB.notes=txt; kvUpsert('notes',{text:txt}); },600); return; }
   _lsSave(k,v);
 }
-const taskToRow=t=>({id:t.id,title:t.t,date:t.date||null,assignee:t.assignee||null,done:!!t.done,note:t.note||null,details:t.details||null,rec_id:t.rec_id||null,creator:t.creator||null,images:t.images||[]});
+const taskToRow=t=>({id:t.id,title:t.t,date:t.date||null,assignee:t.assignee||null,done:!!t.done,note:t.note||null,details:t.details||null,rec_id:t.rec_id||null,creator:t.creator||null,images:t.images||[],time:t.time||null,remind_before:(t.remind_before===0||t.remind_before)?t.remind_before:null,remind_sent_at:t.remind_sent_at||null});
 const clientToRow=c=>({id:c.id,name:c.name,email:c.email||null,owner:c.owner||null,status:c.status||'on'});
 async function upsertRow(table,row){
   if(!window.sb) return true;
@@ -679,9 +684,9 @@ async function loadAll(){
   if(!window.sb) return;
   try{
     const [tk,cl,kv,rc,rs]=await Promise.all([sb.from('tasks').select('*').order('created_at'),sb.from('clients').select('*').order('created_at'),sb.from('app_kv').select('*'),sb.from('recurring').select('*').order('created_at'),sb.from('reminders_sched').select('*').order('time')]);
-    DB.tasks=(tk.data||[]).map(r=>({id:r.id,t:r.title,date:r.date,assignee:r.assignee||'',done:!!r.done,note:r.note||'',details:r.details||'',rec_id:r.rec_id||null,creator:r.creator||null,images:r.images||[]}));
+    DB.tasks=(tk.data||[]).map(r=>({id:r.id,t:r.title,date:r.date,assignee:r.assignee||'',done:!!r.done,note:r.note||'',details:r.details||'',rec_id:r.rec_id||null,creator:r.creator||null,images:r.images||[],time:r.time||'',remind_before:(r.remind_before===0||r.remind_before)?r.remind_before:null,remind_sent_at:r.remind_sent_at||null}));
     DB.clients=(cl.data||[]).map(r=>({id:r.id,name:r.name,email:r.email||'',owner:r.owner||'',status:r.status||'on'}));
-    DB.recurring=(rc.data||[]).map(r=>({id:r.id,title:r.title,time:r.time||'',weekdays:r.weekdays||[],assignee:r.assignee||'',details:r.details||''}));
+    DB.recurring=(rc.data||[]).map(r=>({id:r.id,title:r.title,time:r.time||'',weekdays:r.weekdays||[],assignee:r.assignee||'',details:r.details||'',remind_before:(r.remind_before===0||r.remind_before)?r.remind_before:null}));
     DB.remindersSched=((rs&&rs.data)||[]).map(r=>({id:r.id,title:r.title||'',message:r.message||'',time:r.time||'',weekdays:r.weekdays||[],target:r.target||'all',include_tasks:r.include_tasks!==false,active:r.active!==false}));
     const m={};(kv.data||[]).forEach(r=>m[r.k]=r.v); DB.reminders=m.reminders||{}; DB.notes=(m.notes&&m.notes.text)||'';
   }catch(e){console.warn('loadAll',e);}
@@ -825,6 +830,7 @@ function taskIndicators(t){
   if(t.details&&t.details.trim()) h+='<span class="chip-ic">📋</span>';
   if(t.images&&t.images.length) h+='<span class="chip-ic">📷 '+t.images.length+'</span>';
   if(t.note&&t.note.trim()) h+='<span class="chip-ic">📝</span>';
+  if(t.remind_before!=null&&t.time) h+='<span class="chip-ic" title="Recordatorio por email">🔔 '+esc(t.time)+'</span>';
   return h;
 }
 function taskChip(t,um){
@@ -843,7 +849,7 @@ function recChip(r,iso,um){
   const canDo=admin()||(me&&r.assignee===me.email);
   return '<div class="tsk rec" data-rec="'+r.id+'" data-recdate="'+iso+'" title="Recurrente — clic para completar">'
     +'<div class="tsk-top">'+(canDo?'<button class="tcb" data-recdone="'+r.id+'" data-recdate="'+iso+'" title="Marcar hecha"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 5 5L20 7"/></svg></button>':'')+'<span class="rec-ic">🔁</span><span class="tt">'+tm+esc(r.title)+'</span></div>'
-    +(tag?'<div class="tsk-foot">'+tag+(r.details?' <span class="chip-ic">📋</span>':'')+'</div>':'')+'</div>';
+    +(tag||r.remind_before!=null?'<div class="tsk-foot">'+tag+(r.details?' <span class="chip-ic">📋</span>':'')+(r.remind_before!=null&&r.time?' <span class="chip-ic" title="Recordatorio por email">🔔</span>':'')+'</div>':'')+'</div>';
 }
 function cellInner(dt,tasks,um){
   const iso=isoOf(dt), wd=(dt.getDay()+6)%7;
@@ -965,20 +971,23 @@ function setModalMode(recurring,isAdmin){
   $('#fAssignee').hidden=!isAdmin; $('#fDesc').hidden=false;
   $('#fDate').hidden=recurring; $('#fNote').hidden=recurring; $('#fPhotos').hidden=recurring; $('#fDone').hidden=recurring;
   $('#fNotify').hidden=recurring||!isAdmin;
+  $('#fRemind').hidden=recurring; $('#tTimeOne').disabled=false; $('#tRemind').disabled=false;
 }
 $('#wdRow').addEventListener('click',e=>{const b=e.target.closest('.wd');if(b)b.classList.toggle('on');});
-$('#tRepeatOn').addEventListener('change',()=>{const on=$('#tRepeatOn').checked;$('#repeatOpts').hidden=!on;$('#fDate').hidden=on;});
+$('#tRepeatOn').addEventListener('change',()=>{const on=$('#tRepeatOn').checked;$('#repeatOpts').hidden=!on;$('#fDate').hidden=on;$('#fRemind').hidden=on;$('#fNote').hidden=on;$('#fPhotos').hidden=on;$('#fDone').hidden=on;});
 function openTask(id,opt){
   opt=opt||{};
   const preset=typeof opt==='string'?opt:opt.date, complete=opt.complete, recId=opt.rec, occ=opt.occ;
   const isAdmin=admin();
   editingTask=null; editingRecurring=null; occurrence=null; draftImages=[];
   setWeekdays([]); $('#tTime').value=''; $('#tRepeatOn').checked=false; $('#repeatOpts').hidden=true;
+  $('#tTimeOne').value=''; $('#tRemind').value=''; $('#tRemindRec').value='';
   if(recId!=null){
     if(!isAdmin){toast('Solo el administrador');return;}
     const r=DB.recurring.find(x=>x.id===recId); if(!r){toast('Ya no existe');return;}
     editingRecurring=recId;
     $('#tTitle').value=r.title; $('#tDesc').value=r.details||''; $('#tTime').value=r.time||''; setWeekdays(r.weekdays||[]);
+    $('#tRemindRec').value=String(r.remind_before==null?'':r.remind_before);
     optionsForUsers($('#tAssignee'), r.assignee||'','Sin asignar');
     setModalMode(true,isAdmin); $('#fRepeat').hidden=false; $('#tRepeatOn').checked=true; $('#repeatOpts').hidden=false;
     $('#tModalTitle').textContent='Tarea recurrente'; $('#tDelete').hidden=false;
@@ -990,7 +999,7 @@ function openTask(id,opt){
     occurrence={recId:occ.recId, iso:occ.iso};
     $('#tTitle').value=r.title; $('#tDesc').value=r.details||''; $('#tDate').value=occ.iso; $('#tNote').value=''; $('#tDone').checked=true;
     optionsForUsers($('#tAssignee'), r.assignee||'','Sin asignar');
-    setModalMode(false,isAdmin); $('#fRepeat').hidden=true; $('#fNotify').hidden=true; $('#fDate').hidden=true; $('#fAssignee').hidden=true;
+    setModalMode(false,isAdmin); $('#fRepeat').hidden=true; $('#fNotify').hidden=true; $('#fDate').hidden=true; $('#fAssignee').hidden=true; $('#fRemind').hidden=true;
     $('#tTitle').readOnly=true; $('#tDesc').readOnly=true;
     $('#tModalTitle').textContent='Completar: '+r.title; $('#tDelete').hidden=true;
     renderThumbs(); openModal('mTask'); setTimeout(()=>$('#tNote').focus(),50); return;
@@ -999,8 +1008,9 @@ function openTask(id,opt){
     if(!canEditTask(id)){toast('Solo el administrador puede editar esta tarea');return;}
     const t=taskById(id);editingTask=id;
     $('#tTitle').value=t.t;$('#tDate').value=t.date||isoOf(TODAY);$('#tDesc').value=t.details||'';optionsForUsers($('#tAssignee'),null,'Sin asignar');$('#tAssignee').value=t.assignee||'';$('#tNote').value=t.note||'';draftImages=(t.images||[]).slice();$('#tDone').checked=complete?true:!!t.done;
+    $('#tTimeOne').value=t.time||''; $('#tRemind').value=String(t.remind_before==null?'':t.remind_before);
     setModalMode(false,isAdmin); $('#fRepeat').hidden=true;
-    if(!isAdmin){ $('#tTitle').readOnly=true; $('#tDate').readOnly=true; $('#tDesc').readOnly=true; }
+    if(!isAdmin){ $('#tTitle').readOnly=true; $('#tDate').readOnly=true; $('#tDesc').readOnly=true; $('#tTimeOne').disabled=true; $('#tRemind').disabled=true; }
     $('#tModalTitle').textContent=complete?'Completar tarea':'Editar tarea';$('#tDelete').hidden=!canDeleteTask(id);
   } else {
     $('#tTitle').value='';$('#tDate').value=preset||isoOf(TODAY);$('#tDesc').value='';optionsForUsers($('#tAssignee'),me?me.email:'','Sin asignar');$('#tNote').value='';$('#tDone').checked=false;
@@ -1028,15 +1038,20 @@ $('#tSave').addEventListener('click',()=>{
     const wds=getWeekdays(); if(!wds.length){toast('Marca al menos un día de la semana');return;}
     const rid=editingRecurring!=null?editingRecurring:Date.now();
     const time=$('#tTime').value.trim(), asg=$('#tAssignee').value||'', det=$('#tDesc').value.trim();
-    DB.recurring=DB.recurring.filter(x=>x.id!==rid); DB.recurring.push({id:rid,title,time,weekdays:wds,assignee:asg,details:det});
-    upsertRow('recurring',{id:rid,title,time:time||null,weekdays:wds,assignee:asg||null,details:det||null});
+    const remBrec=$('#tRemindRec').value, remRec=remBrec===''?null:+remBrec;
+    if(remRec!=null && !time){toast('Pon una hora para el recordatorio.');return;}
+    DB.recurring=DB.recurring.filter(x=>x.id!==rid); DB.recurring.push({id:rid,title,time,weekdays:wds,assignee:asg,details:det,remind_before:remRec});
+    upsertRow('recurring',{id:rid,title,time:time||null,weekdays:wds,assignee:asg||null,details:det||null,remind_before:remRec,last_remind_slot:null});
     closeModal('mTask');renderCalendar();renderTasks();toast(editingRecurring!=null?'Recurrente actualizada':'Tarea recurrente creada ✓');
     return;
   }
   if(editingTask&&!canEditTask(editingTask)){toast('Sin permiso');return;}
   const assignee=isAdmin?$('#tAssignee').value:(me?me.email:'');
   const notify=isAdmin&&$('#tNotify').checked&&assignee&&assignee!==(me?me.email:'');
-  const patch={t:title,date:$('#tDate').value||isoOf(TODAY),assignee:assignee,done:$('#tDone').checked,note:$('#tNote').value.trim(),details:$('#tDesc').value.trim(),images:draftImages.slice()};
+  const timeOne=$('#tTimeOne').value.trim();
+  const remB=$('#tRemind').value, remind_before=remB===''?null:+remB;
+  if(remind_before!=null && !timeOne){toast('Pon una hora para el recordatorio.');$('#tTimeOne').focus();return;}
+  const patch={t:title,date:$('#tDate').value||isoOf(TODAY),assignee:assignee,done:$('#tDone').checked,note:$('#tNote').value.trim(),details:$('#tDesc').value.trim(),images:draftImages.slice(),time:timeOne||null,remind_before:remind_before,remind_sent_at:null};
   const tasks=load(K.tasks,[]); let row;
   if(editingTask){row=tasks.find(x=>x.id===editingTask);if(!row){toast('Esa tarea ya no existe');closeModal('mTask');return;}Object.assign(row,patch);}
   else {row=Object.assign({id:Date.now(),creator:(me?me.email:'')},patch);tasks.unshift(row);}
