@@ -974,7 +974,13 @@ function setModalMode(recurring,isAdmin){
   $('#fRemind').hidden=recurring; $('#tTimeOne').disabled=false; $('#tRemind').disabled=false;
 }
 $('#wdRow').addEventListener('click',e=>{const b=e.target.closest('.wd');if(b)b.classList.toggle('on');});
-$('#tRepeatOn').addEventListener('change',()=>{const on=$('#tRepeatOn').checked;$('#repeatOpts').hidden=!on;$('#fDate').hidden=on;$('#fRemind').hidden=on;$('#fNote').hidden=on;$('#fPhotos').hidden=on;$('#fDone').hidden=on;});
+$('#tRepeatOn').addEventListener('change',()=>{const on=$('#tRepeatOn').checked;$('#repeatOpts').hidden=!on;$('#fDate').hidden=on;$('#fRemind').hidden=on;$('#fNote').hidden=on;$('#fPhotos').hidden=on;$('#fDone').hidden=on;
+  if(on){ // al pasar a "cada semana" arrastra la hora/recordatorio y marca el día de la fecha
+    if(!$('#tTime').value.trim() && $('#tTimeOne').value.trim()) $('#tTime').value=$('#tTimeOne').value.trim();
+    if(!$('#tRemindRec').value && $('#tRemind').value) $('#tRemindRec').value=$('#tRemind').value;
+    if(!getWeekdays().length){ const dv=$('#tDate').value; if(dv){ const p=dv.split('-').map(Number); setWeekdays([(new Date(p[0],p[1]-1,p[2]).getDay()+6)%7]); } }
+  }
+});
 function openTask(id,opt){
   opt=opt||{};
   const preset=typeof opt==='string'?opt:opt.date, complete=opt.complete, recId=opt.rec, occ=opt.occ;
@@ -1009,7 +1015,7 @@ function openTask(id,opt){
     const t=taskById(id);editingTask=id;
     $('#tTitle').value=t.t;$('#tDate').value=t.date||isoOf(TODAY);$('#tDesc').value=t.details||'';optionsForUsers($('#tAssignee'),null,'Sin asignar');$('#tAssignee').value=t.assignee||'';$('#tNote').value=t.note||'';draftImages=(t.images||[]).slice();$('#tDone').checked=complete?true:!!t.done;
     $('#tTimeOne').value=t.time||''; $('#tRemind').value=String(t.remind_before==null?'':t.remind_before);
-    setModalMode(false,isAdmin); $('#fRepeat').hidden=true;
+    setModalMode(false,isAdmin); $('#fRepeat').hidden=!isAdmin;
     if(!isAdmin){ $('#tTitle').readOnly=true; $('#tDate').readOnly=true; $('#tDesc').readOnly=true; $('#tTimeOne').disabled=true; $('#tRemind').disabled=true; }
     $('#tModalTitle').textContent=complete?'Completar tarea':'Editar tarea';$('#tDelete').hidden=!canDeleteTask(id);
   } else {
@@ -1033,7 +1039,7 @@ $('#tSave').addEventListener('click',()=>{
     closeModal('mTask');renderCalendar();renderTasks();updateCounts();toast('Guardada ✓');
     return;
   }
-  if(editingRecurring!=null || (!editingTask && isAdmin && $('#tRepeatOn').checked)){
+  if(editingRecurring!=null || (isAdmin && $('#tRepeatOn').checked)){
     if(!isAdmin){toast('Solo el administrador');return;}
     const wds=getWeekdays(); if(!wds.length){toast('Marca al menos un día de la semana');return;}
     const rid=editingRecurring!=null?editingRecurring:Date.now();
@@ -1042,7 +1048,9 @@ $('#tSave').addEventListener('click',()=>{
     if(remRec!=null && !time){toast('Pon una hora para el recordatorio.');return;}
     DB.recurring=DB.recurring.filter(x=>x.id!==rid); DB.recurring.push({id:rid,title,time,weekdays:wds,assignee:asg,details:det,remind_before:remRec});
     upsertRow('recurring',{id:rid,title,time:time||null,weekdays:wds,assignee:asg||null,details:det||null,remind_before:remRec,last_remind_slot:null});
-    closeModal('mTask');renderCalendar();renderTasks();toast(editingRecurring!=null?'Recurrente actualizada':'Tarea recurrente creada ✓');
+    const converted = editingTask!=null && editingRecurring==null; // era una tarea suelta -> pasa a recurrente
+    if(converted){ const oid=editingTask; DB.tasks=DB.tasks.filter(x=>x.id!==oid); removeRow('tasks',oid); }
+    closeModal('mTask');renderCalendar();renderTasks();updateCounts();toast(editingRecurring!=null?'Recurrente actualizada':(converted?'Convertida en «cada semana» ✓':'Tarea recurrente creada ✓'));
     return;
   }
   if(editingTask&&!canEditTask(editingTask)){toast('Sin permiso');return;}
