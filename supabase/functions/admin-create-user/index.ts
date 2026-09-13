@@ -32,7 +32,8 @@ Deno.serve(async (req) => {
 
     if (action === "create") {
       const email = String(body.email || "").trim().toLowerCase();
-      if (!/^[^@\s]+@onepulso\.online$/.test(email)) return json({ ok: false, error: "El correo debe terminar en @onepulso.online" });
+      // Cualquier correo válido: solo el admin (verificado arriba) puede crear usuarios.
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return json({ ok: false, error: "Escribe un correo válido" });
       if (!body.password || String(body.password).length < 6) return json({ ok: false, error: "La contraseña debe tener al menos 6 caracteres" });
       const role = body.role === "admin" ? "admin" : "member";
       const name = String(body.name || "");

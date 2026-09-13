@@ -522,7 +522,7 @@ textarea.area{height:auto;min-height:80px;padding:10px 14px;resize:vertical;line
     <div class="b">
       <div class="alert" id="uAlert"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg><span id="uAlertMsg"></span></div>
       <div class="field"><label>Nombre completo</label><input class="inp" id="nuName" placeholder="Ej. Ana Martín"></div>
-      <div class="field"><label>Correo (@onepulso.online)</label><input class="inp" id="nuEmail" placeholder="ana@onepulso.online" spellcheck="false"></div>
+      <div class="field"><label>Correo del usuario</label><input class="inp" id="nuEmail" placeholder="nombre@correo.com" spellcheck="false" autocapitalize="none"></div>
       <div class="grid2">
         <div class="field"><label>Contraseña provisional</label><input class="inp" id="nuPass" placeholder="Mínimo 6 caracteres"></div>
         <div class="field"><label>Rol</label><select class="inp" id="nuRole"><option value="member">Miembro</option><option value="admin">Administrador</option></select></div>
@@ -764,8 +764,8 @@ $('#email').addEventListener('input',loginClear);$('#password').addEventListener
 $('#loginForm').addEventListener('submit',async e=>{
   e.preventDefault();loginClear();
   const email=$('#email').value.trim().toLowerCase(), pass=$('#password').value;
-  if(!email) return loginErr('Introduce tu correo de empresa.',['fEmail']);
-  if(!email.endsWith(DOMAIN)) return loginErr('Solo se permite el acceso con cuentas '+DOMAIN+'.',['fEmail']);
+  if(!email) return loginErr('Introduce tu correo.',['fEmail']);
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return loginErr('Introduce un correo válido.',['fEmail']);
   if(!pass) return loginErr('Introduce tu contraseña.',['fPass']);
   if(!window.sb) return loginErr('No hay conexión con la base de datos. Revisa la configuración de Supabase.');
   const btn=$('#loginBtn');btn.disabled=true;btn.innerHTML='<span class="spin"></span> Verificando…';
@@ -1176,7 +1176,7 @@ $('#nuSave').addEventListener('click',async ()=>{
   $('#uAlert').classList.remove('show');
   const name=$('#nuName').value.trim(), email=$('#nuEmail').value.trim().toLowerCase(), pass=$('#nuPass').value, role=$('#nuRole').value;
   if(!name)return uErr('Escribe el nombre completo.');
-  if(!/^[^@\s]+@onepulso\.online$/.test(email))return uErr('El correo debe terminar en '+DOMAIN+'.');
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))return uErr('Escribe un correo válido (de cualquier dominio).');
   if(pass.length<6)return uErr('La contraseña debe tener al menos 6 caracteres.');
   const btn=$('#nuSave');btn.disabled=true;btn.textContent='Creando…';
   const {data,error}=await sb.functions.invoke('admin-create-user',{body:{action:'create',email,name,password:pass,role}});
