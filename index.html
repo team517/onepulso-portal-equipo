@@ -1058,7 +1058,7 @@ $('#tSave').addEventListener('click',()=>{
   const notify=isAdmin&&$('#tNotify').checked&&assignee&&assignee!==(me?me.email:'');
   const timeOne=$('#tTimeOne').value.trim();
   const remB=$('#tRemind').value, remind_before=remB===''?null:+remB;
-  if(remind_before!=null && !timeOne){toast('Pon una hora para el recordatorio.');$('#tTimeOne').focus();return;}
+  if(!$('#tTimeOne').disabled && remind_before!=null && !timeOne){toast('Pon una hora para el recordatorio.');$('#tTimeOne').focus();return;}
   const patch={t:title,date:$('#tDate').value||isoOf(TODAY),assignee:assignee,done:$('#tDone').checked,note:$('#tNote').value.trim(),details:$('#tDesc').value.trim(),images:draftImages.slice(),time:timeOne||null,remind_before:remind_before,remind_sent_at:null};
   const tasks=load(K.tasks,[]); let row;
   if(editingTask){row=tasks.find(x=>x.id===editingTask);if(!row){toast('Esa tarea ya no existe');closeModal('mTask');return;}Object.assign(row,patch);}
