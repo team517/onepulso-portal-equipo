@@ -135,6 +135,11 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
 .notes-area{width:100%;min-height:72px}
 .notes-card.ro .notes-area{background:var(--surface);cursor:default}
 .smtp-tag{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#0a7d47;background:#e4f7ee;border:1px solid #bfe9cf;padding:5px 11px;border-radius:20px;white-space:nowrap}
+/* Cliente que gestiona quien ha entrado: fila en verde para reconocer "los tuyos" */
+.tbl tr.mine>td{background:#e8f8ef}
+.tbl tr.mine:hover>td{background:#dcf4e6}
+.tbl tr.mine>td:first-child{box-shadow:inset 3px 0 0 #0a7d47}
+.mine-badge{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;color:#0a7d47;background:#e4f7ee;border:1px solid #bfe9cf;padding:1px 8px;border-radius:20px;margin-left:7px;vertical-align:middle}
 .wd-row{display:flex;gap:6px;flex-wrap:wrap}
 .wd{width:34px;height:34px;border-radius:9px;border:1px solid var(--line-2);background:#fff;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer}
 .wd:hover{border-color:var(--purple)}
@@ -1137,9 +1142,10 @@ $('#repSave').addEventListener('click',async ()=>{
 const CLST={on:['badge on','Activo'],pend:['badge pend','Onboarding'],paused:['badge paused','En pausa']};
 function renderClients(){
   const cs=load(K.clients,[]), um=usersMap();
-  $('#clientsMeta').textContent=cs.length+' cuentas';
-  $('#clientRows').innerHTML=cs.map(c=>{const st=CLST[c.status]||CLST.on;return(
-    '<tr data-id="'+c.id+'"'+(admin()?' class="crow"':'')+'><td><div class="who"><span class="av" style="background:'+colorFor(c.name)+'">'+initials(c.name)+'</span><b>'+esc(c.name)+'</b></div></td>'+
+  const mineCount=me?cs.filter(c=>c.owner&&c.owner===me.email).length:0;
+  $('#clientsMeta').textContent=cs.length+' cuentas'+(mineCount?' · '+mineCount+(mineCount===1?' tuyo':' tuyos'):'');
+  $('#clientRows').innerHTML=cs.map(c=>{const st=CLST[c.status]||CLST.on;const mine=!!(me&&c.owner&&c.owner===me.email);const cls=((admin()?'crow ':'')+(mine?'mine':'')).trim();return(
+    '<tr data-id="'+c.id+'"'+(cls?' class="'+cls+'"':'')+'><td><div class="who"><span class="av" style="background:'+colorFor(c.name)+'">'+initials(c.name)+'</span><b>'+esc(c.name)+'</b>'+(mine?'<span class="mine-badge"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 5 5L20 7"/></svg>Tuyo</span>':'')+'</div></td>'+
     '<td class="muted">'+esc(c.email||'—')+'</td><td><span class="'+st[0]+'">'+st[1]+'</span></td><td>'+whoTag(c.owner,um)+'</td>'+
     '<td style="text-align:right">'+(me&&me.role==='admin'?'<button class="rowbtn" data-del-client="'+c.id+'" title="Eliminar"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></button>':'')+'</td></tr>'
   );}).join('')||'<tr><td colspan="5" class="empty">Aún no hay clientes.</td></tr>';
