@@ -510,7 +510,10 @@ textarea.area{height:auto;min-height:80px;padding:10px 14px;resize:vertical;line
 <div class="modal" id="mClient">
   <div class="box"><div class="h"><h3 id="clModalTitle">Nuevo cliente</h3><button class="x" data-close><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
     <div class="b">
-      <div class="field"><label>Nombre del cliente</label><input class="inp" id="clName" placeholder="Ej. Grupo Adwake"></div>
+      <div class="grid2">
+        <div class="field"><label>Nombre del cliente</label><input class="inp" id="clName" placeholder="Ej. Grupo Adwake"></div>
+        <div class="field"><label>Persona de contacto</label><input class="inp" id="clContact" placeholder="Ej. Ana Martín"></div>
+      </div>
       <div class="field"><label>Correo de contacto</label><input class="inp" id="clEmail" placeholder="contacto@cliente.com"></div>
       <div class="grid2">
         <div class="field"><label>Responsable (empleado)</label><select class="inp" id="clOwner"></select></div>
@@ -667,7 +670,7 @@ function save(k,v){
   _lsSave(k,v);
 }
 const taskToRow=t=>({id:t.id,title:t.t,date:t.date||null,assignee:t.assignee||null,done:!!t.done,note:t.note||null,details:t.details||null,rec_id:t.rec_id||null,creator:t.creator||null,images:t.images||[],time:t.time||null,remind_before:(t.remind_before===0||t.remind_before)?t.remind_before:null,remind_sent_at:t.remind_sent_at||null});
-const clientToRow=c=>({id:c.id,name:c.name,email:c.email||null,owner:c.owner||null,status:c.status||'on'});
+const clientToRow=c=>({id:c.id,name:c.name,contact_name:c.contact_name||null,email:c.email||null,owner:c.owner||null,status:c.status||'on'});
 async function upsertRow(table,row){
   if(!window.sb) return true;
   const {error}=await sb.from(table).upsert(row);
@@ -690,7 +693,7 @@ async function loadAll(){
   try{
     const [tk,cl,kv,rc,rs]=await Promise.all([sb.from('tasks').select('*').order('created_at'),sb.from('clients').select('*').order('created_at'),sb.from('app_kv').select('*'),sb.from('recurring').select('*').order('created_at'),sb.from('reminders_sched').select('*').order('time')]);
     DB.tasks=(tk.data||[]).map(r=>({id:r.id,t:r.title,date:r.date,assignee:r.assignee||'',done:!!r.done,note:r.note||'',details:r.details||'',rec_id:r.rec_id||null,creator:r.creator||null,images:r.images||[],time:r.time||'',remind_before:(r.remind_before===0||r.remind_before)?r.remind_before:null,remind_sent_at:r.remind_sent_at||null}));
-    DB.clients=(cl.data||[]).map(r=>({id:r.id,name:r.name,email:r.email||'',owner:r.owner||'',status:r.status||'on'}));
+    DB.clients=(cl.data||[]).map(r=>({id:r.id,name:r.name,contact_name:r.contact_name||'',email:r.email||'',owner:r.owner||'',status:r.status||'on'}));
     DB.recurring=(rc.data||[]).map(r=>({id:r.id,title:r.title,time:r.time||'',weekdays:r.weekdays||[],assignee:r.assignee||'',details:r.details||'',remind_before:(r.remind_before===0||r.remind_before)?r.remind_before:null}));
     DB.remindersSched=((rs&&rs.data)||[]).map(r=>({id:r.id,title:r.title||'',message:r.message||'',time:r.time||'',weekdays:r.weekdays||[],target:r.target||'all',include_tasks:r.include_tasks!==false,active:r.active!==false}));
     const m={};(kv.data||[]).forEach(r=>m[r.k]=r.v); DB.reminders=m.reminders||{}; DB.notes=(m.notes&&m.notes.text)||'';
@@ -1144,9 +1147,10 @@ function renderClients(){
   const cs=load(K.clients,[]), um=usersMap();
   const mineCount=me?cs.filter(c=>c.owner&&c.owner===me.email).length:0;
   $('#clientsMeta').textContent=cs.length+' cuentas'+(mineCount?' · '+mineCount+(mineCount===1?' tuyo':' tuyos'):'');
-  $('#clientRows').innerHTML=cs.map(c=>{const st=CLST[c.status]||CLST.on;const mine=!!(me&&c.owner&&c.owner===me.email);const cls=((admin()?'crow ':'')+(mine?'mine':'')).trim();return(
+  $('#clientRows').innerHTML=cs.map(c=>{const st=CLST[c.status]||CLST.on;const mine=!!(me&&c.owner&&c.owner===me.email);const cls=((admin()?'crow ':'')+(mine?'mine':'')).trim();
+    const contactCell=(c.contact_name||c.email)?((c.contact_name?'<b>'+esc(c.contact_name)+'</b>':'')+(c.email?'<div class="muted" style="font-size:12.5px'+(c.contact_name?';margin-top:1px':'')+'">'+esc(c.email)+'</div>':'')):'<span class="muted">—</span>';return(
     '<tr data-id="'+c.id+'"'+(cls?' class="'+cls+'"':'')+'><td><div class="who"><span class="av" style="background:'+colorFor(c.name)+'">'+initials(c.name)+'</span><b>'+esc(c.name)+'</b>'+(mine?'<span class="mine-badge"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 5 5L20 7"/></svg>Tuyo</span>':'')+'</div></td>'+
-    '<td class="muted">'+esc(c.email||'—')+'</td><td><span class="'+st[0]+'">'+st[1]+'</span></td><td>'+whoTag(c.owner,um)+'</td>'+
+    '<td>'+contactCell+'</td><td><span class="'+st[0]+'">'+st[1]+'</span></td><td>'+whoTag(c.owner,um)+'</td>'+
     '<td style="text-align:right">'+(me&&me.role==='admin'?'<button class="rowbtn" data-del-client="'+c.id+'" title="Eliminar"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></button>':'')+'</td></tr>'
   );}).join('')||'<tr><td colspan="5" class="empty">Aún no hay clientes.</td></tr>';
 }
@@ -1159,13 +1163,13 @@ function openClient(id){
   editingClient=(typeof id==='number')?id:null;
   $('#clModalTitle').textContent=editingClient?'Editar cliente':'Nuevo cliente';
   $('#clSave').textContent=editingClient?'Guardar cambios':'Crear cliente';
-  if(editingClient){const c=load(K.clients,[]).find(x=>x.id===editingClient)||{};$('#clName').value=c.name||'';$('#clEmail').value=c.email||'';optionsForUsers($('#clOwner'),c.owner||'','Sin asignar');$('#clStatus').value=c.status||'on';}
-  else{$('#clName').value='';$('#clEmail').value='';optionsForUsers($('#clOwner'),me?me.email:'','Sin asignar');$('#clStatus').value='on';}
+  if(editingClient){const c=load(K.clients,[]).find(x=>x.id===editingClient)||{};$('#clName').value=c.name||'';$('#clContact').value=c.contact_name||'';$('#clEmail').value=c.email||'';optionsForUsers($('#clOwner'),c.owner||'','Sin asignar');$('#clStatus').value=c.status||'on';}
+  else{$('#clName').value='';$('#clContact').value='';$('#clEmail').value='';optionsForUsers($('#clOwner'),me?me.email:'','Sin asignar');$('#clStatus').value='on';}
   openModal('mClient');setTimeout(()=>$('#clName').focus(),50);
 }
 $('#clSave').addEventListener('click',()=>{
   const name=$('#clName').value.trim();if(!name){$('#clName').focus();return;}
-  const data={name,email:$('#clEmail').value.trim(),owner:$('#clOwner').value,status:$('#clStatus').value};
+  const data={name,contact_name:$('#clContact').value.trim(),email:$('#clEmail').value.trim(),owner:$('#clOwner').value,status:$('#clStatus').value};
   const cs=load(K.clients,[]); let row;
   if(editingClient){row=cs.find(x=>x.id===editingClient);if(!row){toast('Ese cliente ya no existe');closeModal('mClient');return;}Object.assign(row,data);}
   else {row=Object.assign({id:Date.now()},data);cs.unshift(row);}
