@@ -716,6 +716,10 @@ const initials=s=>String(s).trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('')
 const firstName=s=>String(s).trim().split(/\s+/)[0]||s;
 const AVCOL=['#7A5AF8','#0088b0','#12b76a','#E5A400','#D6006C','#5B3AD9'];
 const colorFor=s=>AVCOL[[...String(s)].reduce((a,c)=>a+c.charCodeAt(0),0)%AVCOL.length];
+/* Un color DISTINTO por usuario del equipo (según su orden en el equipo), para que
+   en el calendario se vea de un vistazo de quién es cada tarea. */
+function userColor(email){ if(!email) return ''; const i=profilesCache.findIndex(u=>u.email===email); if(i>=0) return AVCOL[i%AVCOL.length]; const u=usersMap()[email]; return colorFor((u&&u.name)||email); }
+const tintOf=(c,p)=>'color-mix(in srgb,'+c+' '+p+'%,#fff)';
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 /* date helpers */
@@ -750,7 +754,8 @@ function optionsForUsers(sel,val,emptyLabel){
 function whoTag(email,um){
   const u=um[email];
   if(!u) return '<span class="who-tag" style="opacity:.75"><i style="background:#c8c6d0"></i><span>Sin asignar</span></span>';
-  return '<span class="who-tag" style="background:'+color20(u.name)+';color:'+colorFor(u.name)+'"><i style="background:'+colorFor(u.name)+'"></i><span>'+esc(u.name)+'</span></span>';
+  const col=userColor(email);
+  return '<span class="who-tag" style="background:'+tintOf(col,15)+';color:'+col+'"><i style="background:'+col+'"></i><span>'+esc(u.name)+'</span></span>';
 }
 const color20=s=>'color-mix(in srgb,'+colorFor(s)+' 15%,#fff)';
 
@@ -846,7 +851,9 @@ function taskChip(t,um){
   const tag=(t.assignee&&um[t.assignee])?whoTag(t.assignee,um):'';
   const canEdit=admin()||(me&&t.assignee===me.email);
   const canDel=admin()||(me&&t.creator&&t.creator===me.email);
-  return '<div class="tsk'+(isRec?' rec':'')+(t.done?' done':'')+'" draggable="'+((canEdit&&!isRec)?'true':'false')+'" data-task="'+t.id+'">'
+  const col=(t.assignee&&um[t.assignee])?userColor(t.assignee):'';
+  const stl=col?' style="border-left-color:'+col+';background:'+tintOf(col,7)+'"':'';
+  return '<div class="tsk'+(isRec?' rec':'')+(t.done?' done':'')+'"'+stl+' draggable="'+((canEdit&&!isRec)?'true':'false')+'" data-task="'+t.id+'">'
     +(canDel?'<button class="tdel" data-del-task="'+t.id+'" title="Quitar tarea">×</button>':'')
     +'<div class="tsk-top"><button class="tcb" data-toggle="'+t.id+'" title="'+(t.done?'Reabrir':'Marcar terminada')+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 5 5L20 7"/></svg></button>'+(isRec?'<span class="rec-ic">🔁</span>':'')+'<span class="tt">'+esc(t.t)+'</span></div>'
     +'<div class="tsk-foot">'+tag+taskIndicators(t)+'</div></div>';
@@ -855,7 +862,9 @@ function recChip(r,iso,um){
   const tag=(r.assignee&&um[r.assignee])?whoTag(r.assignee,um):'';
   const tm=r.time?('<b>'+esc(r.time)+'</b> '):'';
   const canDo=admin()||(me&&r.assignee===me.email);
-  return '<div class="tsk rec" data-rec="'+r.id+'" data-recdate="'+iso+'" title="Recurrente — clic para completar">'
+  const col=(r.assignee&&um[r.assignee])?userColor(r.assignee):'';
+  const stl=col?' style="border-left-color:'+col+';background:'+tintOf(col,7)+'"':'';
+  return '<div class="tsk rec" data-rec="'+r.id+'" data-recdate="'+iso+'"'+stl+' title="Recurrente — clic para completar">'
     +'<div class="tsk-top">'+(canDo?'<button class="tcb" data-recdone="'+r.id+'" data-recdate="'+iso+'" title="Marcar hecha"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 5 5L20 7"/></svg></button>':'')+'<span class="rec-ic">🔁</span><span class="tt">'+tm+esc(r.title)+'</span></div>'
     +(tag||r.remind_before!=null?'<div class="tsk-foot">'+tag+(r.details?' <span class="chip-ic">📋</span>':'')+(r.remind_before!=null&&r.time?' <span class="chip-ic" title="Recordatorio por email">🔔</span>':'')+'</div>':'')+'</div>';
 }
