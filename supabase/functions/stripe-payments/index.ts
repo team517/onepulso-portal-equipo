@@ -16,15 +16,12 @@ Deno.serve(async (req) => {
   try {
     const url = Deno.env.get("SUPABASE_URL")!;
     const anon = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    // Solo un admin autenticado (team@)
+    // Solo team@onepulso.online
     const caller = createClient(url, anon, { global: { headers: { Authorization: req.headers.get("Authorization") || "" } } });
     const { data: { user } } = await caller.auth.getUser();
     if (!user) return json({ ok: false, error: "No autenticado" });
-    const admin = createClient(url, service);
-    const { data: prof } = await admin.from("profiles").select("role").eq("id", user.id).single();
-    if (!prof || prof.role !== "admin") return json({ ok: false, error: "Solo el administrador" });
+    if ((user.email || "").toLowerCase() !== "team@onepulso.online") return json({ ok: false, error: "Solo team@onepulso.online" });
 
     const key = Deno.env.get("STRIPE_SECRET_KEY");
     if (!key) return json({ ok: true, configured: false });

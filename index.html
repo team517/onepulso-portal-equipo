@@ -426,6 +426,7 @@ textarea.area{height:auto;min-height:80px;padding:10px 14px;resize:vertical;line
     <div class="usercard">
       <span class="av" id="uAv">OP</span>
       <div class="meta"><b id="uName">Equipo OnePulso</b><span id="uEmail">team@onepulso.online</span></div>
+      <button class="out" id="accountBtn" title="Mi cuenta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3.4"/><path d="M5 20a7 7 0 0 1 14 0"/></svg></button>
       <button class="out" id="logout" title="Cerrar sesión"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17 15 12 10 7M15 12H3"/></svg></button>
     </div>
   </aside>
@@ -727,6 +728,26 @@ textarea.area{height:auto;min-height:80px;padding:10px 14px;resize:vertical;line
   </div>
 </div>
 
+<div class="modal" id="mAccount">
+  <div class="box"><div class="h"><h3>Mi cuenta</h3><button class="x" data-close><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="b">
+      <div class="alert" id="accAlert"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg><span id="accAlertMsg"></span></div>
+      <div class="grid2">
+        <div class="field"><label>Nombre</label><input class="inp" id="accName" readonly></div>
+        <div class="field"><label>Rol</label><input class="inp" id="accRole" readonly></div>
+      </div>
+      <div class="field"><label>Correo</label><input class="inp" id="accEmail" readonly></div>
+      <p class="hint" style="margin-top:2px">La contraseña no se puede ver (se guarda cifrada). Aquí puedes ponerte una nueva.</p>
+      <div class="grid2">
+        <div class="field"><label>Nueva contraseña</label><input class="inp" id="accPass1" type="password" placeholder="Mínimo 6 caracteres" autocomplete="new-password"></div>
+        <div class="field"><label>Repetir contraseña</label><input class="inp" id="accPass2" type="password" placeholder="Repítela" autocomplete="new-password"></div>
+      </div>
+      <label class="check" style="font-size:13px;color:var(--muted)"><input type="checkbox" id="accShow"> Ver contraseña</label>
+    </div>
+    <div class="f"><button class="btn btn-ghost btn-sm push" data-close>Cerrar</button><button class="btn btn-primary btn-sm" id="accSave">Guardar contraseña</button></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m5 12 5 5L20 7"/></svg><span id="toastMsg"></span></div>
 
 <!-- Config inyectada por EasyPanel (envsubst desde SUPABASE_URL / SUPABASE_ANON_KEY) -->
@@ -920,10 +941,34 @@ function enterApp(u){
   renderAll();go('calendario');toast('Sesión iniciada · '+u.name);
 }
 $('#logout').addEventListener('click',async ()=>{if(!confirm('¿Cerrar sesión en este dispositivo?'))return;try{if(window.sb)await sb.auth.signOut({scope:'local'});}catch(_){}me=null;profilesCache=[];$('#app').hidden=true;$('#login').hidden=false;$('#loginForm').reset();loginClear();$('#email').focus();});
+/* ----- Mi cuenta (ver datos + cambiar contraseña) ----- */
+const ROLES={admin:'Administrador',member:'Miembro'};
+$('#accountBtn').addEventListener('click',()=>{
+  if(!me)return;
+  $('#accAlert').classList.remove('show');
+  $('#accName').value=me.name||''; $('#accEmail').value=me.email||''; $('#accRole').value=ROLES[me.role]||me.role||'';
+  $('#accPass1').value=''; $('#accPass2').value=''; $('#accShow').checked=false; $('#accPass1').type=$('#accPass2').type='password';
+  openModal('mAccount');
+});
+$('#accShow').addEventListener('change',()=>{const t=$('#accShow').checked?'text':'password';$('#accPass1').type=t;$('#accPass2').type=t;});
+function accErr(m){$('#accAlertMsg').textContent=m;$('#accAlert').classList.add('show');}
+$('#accSave').addEventListener('click',async ()=>{
+  $('#accAlert').classList.remove('show');
+  const p1=$('#accPass1').value, p2=$('#accPass2').value;
+  if(p1.length<6) return accErr('La contraseña debe tener al menos 6 caracteres.');
+  if(p1!==p2) return accErr('Las dos contraseñas no coinciden.');
+  if(!window.sb) return accErr('No hay conexión con la base de datos.');
+  const btn=$('#accSave'); btn.disabled=true; btn.textContent='Guardando…';
+  const {error}=await sb.auth.updateUser({password:p1});
+  btn.disabled=false; btn.textContent='Guardar contraseña';
+  if(error) return accErr('No se pudo: '+error.message);
+  closeModal('mAccount'); toast('Contraseña actualizada ✓');
+});
 
 /* ============ NAV ============ */
 const TITLES={calendario:['Calendario','Semana del equipo'],tareas:['Tareas','Tus tareas asignadas'],clientes:['Clientes','Cuentas y responsables'],eventos:['Eventos','Agenda del equipo por días'],pagos:['Pagos','Mensualidades (Stripe) y cobros'],informe:['Informe','Tu parte diario'],usuarios:['Usuarios','Gestiona quién puede entrar']};
 function go(view){
+  if(view==='pagos'&&!(me&&me.email==='team@onepulso.online')){view='calendario';}
   $$('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.view===view));
   $$('.view').forEach(v=>v.hidden=v.id!=='vw-'+view);
   $('#vwTitle').textContent=TITLES[view][0];$('#vwSub').textContent=TITLES[view][1];
