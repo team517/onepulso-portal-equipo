@@ -186,6 +186,18 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
 .stripe-row:first-child{border-top:none}
 .sr-name{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
 .sr-meta{font-size:12px;color:var(--faint);margin-top:2px}
+.pay-strip{display:grid;grid-template-columns:repeat(8,minmax(80px,1fr));gap:8px;margin-bottom:16px;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}
+.pm{display:flex;flex-direction:column;gap:3px;text-align:left;padding:9px 11px;border:1px solid var(--line);border-radius:12px;background:#fff;cursor:pointer;transition:.12s;min-width:0}
+.pm:hover{border-color:color-mix(in srgb,var(--purple) 40%,transparent)}
+.pm.on{border-color:var(--purple);background:var(--purple-xl);box-shadow:0 0 0 3px var(--purple-l)}
+.pm-m{font-size:12px;font-weight:700;color:var(--ink);text-transform:capitalize;display:flex;align-items:center;gap:5px}
+.pm-m i{width:7px;height:7px;border-radius:50%;background:#e5a400;display:inline-block}
+.pm.now .pm-m{color:var(--purple-d)}
+.pm-v{font-size:12.5px;font-weight:600;color:#0a7d47;white-space:nowrap}
+.pm-t{font-size:11px;color:var(--faint);white-space:nowrap;margin-top:-3px}
+.pm-bar{height:4px;border-radius:4px;background:var(--neutral);overflow:hidden}
+.pm-bar b{display:block;height:100%;background:#12b76a;border-radius:4px}
+.pay-pill.late{color:#b42318;background:#fdecea;border:1px solid #f6c9c4}
 @media(max-width:700px){.pay-cards{grid-template-columns:1fr}}
 .wd-row{display:flex;gap:6px;flex-wrap:wrap}
 .wd{width:34px;height:34px;border-radius:9px;border:1px solid var(--line-2);background:#fff;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer}
@@ -388,6 +400,12 @@ textarea.area{height:auto;min-height:80px;padding:10px 14px;resize:vertical;line
 }
 @media(max-width:560px){.view{padding:16px 14px}.grid2{grid-template-columns:1fr}}
 
+/* pantallas medianas: la barra de arriba cabe con botones de icono */
+@media(max-width:1180px){.tb-ic{width:38px;padding:0}.tb-ic .lbl{display:none}}
+@media(max-width:1000px){.topbar .smtp-tag{display:none}}
+.topbar .title{min-width:0}
+.topbar .title p{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
 /* ================= MÓVIL ================= */
 .m-logo{display:none}
 .mdots{display:flex;flex-wrap:wrap;gap:3px;align-content:flex-start}
@@ -515,6 +533,8 @@ html{-webkit-tap-highlight-color:transparent}
   .pay-card{padding:12px 14px}
   .pay-big{font-size:21px}
   #stripeBox{padding:2px 16px 14px!important}
+  .pay-strip{display:flex;margin:0 -14px 14px;padding:0 14px 4px;scroll-snap-type:x proximity}
+  .pm{flex:0 0 96px;scroll-snap-align:center}
   .stripe-row{flex-wrap:wrap;gap:6px 12px;padding:12px 0}
   .stripe-row>div:first-child{flex:1 1 150px}
   .stripe-row>div:last-child{margin-left:auto}
@@ -692,17 +712,26 @@ html{-webkit-tap-highlight-color:transparent}
 
     <!-- Pagos (solo team@) -->
     <div class="view" id="vw-pagos" hidden>
+      <div class="ev-head">
+        <div><div class="eyebrow">Pagos del mes</div><h2 id="payMonthTitle" style="text-transform:capitalize">—</h2></div>
+        <div class="seg" style="background:transparent;padding:0;gap:10px">
+          <button class="btn btn-ghost btn-sm" id="payMonthNow">Este mes</button>
+          <button class="btn btn-ghost btn-sm nav-arr" id="payPrev" title="Mes anterior">‹<span class="lbl"> Anterior</span></button>
+          <button class="btn btn-ghost btn-sm nav-arr" id="payNext" title="Mes siguiente"><span class="lbl">Siguiente </span>›</button>
+        </div>
+      </div>
+      <div class="pay-strip" id="payStrip"></div>
       <div class="pay-cards">
-        <div class="pay-card"><span class="pay-lbl">Me pagarán (total)</span><b id="payTotal" class="pay-big">—</b><span class="pay-sub" id="payTotalSub"></span></div>
-        <div class="pay-card"><span class="pay-lbl">Ya pagado</span><b id="payDone" class="pay-big" style="color:#0a7d47">—</b></div>
-        <div class="pay-card"><span class="pay-lbl">Pendiente de cobrar</span><b id="payPend" class="pay-big" style="color:#9a6a00">—</b></div>
+        <div class="pay-card"><span class="pay-lbl" id="payTotalLbl">Me pagarán este mes</span><b id="payTotal" class="pay-big">—</b><span class="pay-sub" id="payTotalSub"></span></div>
+        <div class="pay-card"><span class="pay-lbl">Ya cobrado</span><b id="payDone" class="pay-big" style="color:#0a7d47">—</b><span class="pay-sub" id="payDoneSub"></span></div>
+        <div class="pay-card"><span class="pay-lbl">Pendiente de cobrar</span><b id="payPend" class="pay-big" style="color:#9a6a00">—</b><span class="pay-sub" id="payPendSub"></span></div>
       </div>
       <div class="card" style="margin-bottom:18px">
         <div class="card-h"><h3>Suscripciones <span class="faint" id="subsTotal" style="font-size:13px;font-weight:500"></span></h3><div style="display:flex;gap:8px"><button class="btn btn-ghost btn-sm" id="addSubBtn">+ Suscripción</button><button class="btn btn-ghost btn-sm" id="stripeRefresh">↻ Actualizar</button></div></div>
         <div id="stripeBox" style="padding:2px 20px 16px"></div>
       </div>
       <div class="card">
-        <div class="card-h"><h3>Pagos únicos</h3><span class="faint" id="payManMeta"></span></div>
+        <div class="card-h"><h3>Pagos únicos del mes</h3><span class="faint" id="payManMeta"></span></div>
         <div style="overflow-x:auto"><table class="tbl"><thead><tr><th>Cliente</th><th>Concepto</th><th>Importe</th><th>Fecha</th><th>Estado</th><th></th></tr></thead><tbody id="payRows"></tbody></table></div>
       </div>
     </div>
@@ -719,10 +748,10 @@ html{-webkit-tap-highlight-color:transparent}
       </div>
       <div class="field"><label>Concepto</label><input class="inp" id="payConcept" placeholder="Ej. Mensualidad octubre"></div>
       <div class="grid2">
-        <div class="field"><label>Fecha</label><input class="inp" id="payDate" type="date"></div>
+        <div class="field"><label id="payDateLbl">Fecha</label><input class="inp" id="payDate" type="date"></div>
         <div class="field"><label>Tipo</label><select class="inp" id="payKind"><option value="unico">Pago único</option><option value="mensualidad">Mensualidad</option></select></div>
       </div>
-      <div class="field"><label>Estado</label><select class="inp" id="payStatus"><option value="pendiente">Pendiente de cobrar</option><option value="cobrado">Cobrado</option></select></div>
+      <div class="field"><label id="payStatusLbl">Estado</label><select class="inp" id="payStatus"><option value="pendiente">Pendiente de cobrar</option><option value="cobrado">Cobrado</option></select></div>
       <div class="field"><label>Nota (opcional)</label><textarea class="inp area" id="payNote" placeholder="Detalles del pago…"></textarea></div>
     </div>
     <div class="f"><button class="btn btn-danger btn-sm" id="payDelete" hidden>Eliminar</button><button class="btn btn-ghost btn-sm push" data-close>Cancelar</button><button class="btn btn-primary btn-sm" id="paySave">Guardar</button></div>
@@ -994,7 +1023,7 @@ async function loadAll(){
     DB.recurring=(rc.data||[]).map(r=>({id:r.id,title:r.title,time:r.time||'',weekdays:r.weekdays||[],assignee:r.assignee||'',details:r.details||'',remind_before:(r.remind_before===0||r.remind_before)?r.remind_before:null}));
     DB.remindersSched=((rs&&rs.data)||[]).map(r=>({id:r.id,title:r.title||'',message:r.message||'',time:r.time||'',weekdays:r.weekdays||[],target:r.target||'all',include_tasks:r.include_tasks!==false,active:r.active!==false}));
     DB.events=((ev&&ev.data)||[]).map(r=>({id:r.id,title:r.title||'',date:r.date,time:r.time||'',assignee:r.assignee||'',client:r.client||'',note:r.note||'',created_by:r.created_by||null}));
-    DB.payments=((pm&&pm.data)||[]).map(r=>({id:r.id,client:r.client||'',concept:r.concept||'',amount:(r.amount!=null?Number(r.amount):0),currency:r.currency||'EUR',due_date:r.due_date||'',kind:r.kind||'unico',status:r.status||'pendiente',note:r.note||''}));
+    DB.payments=((pm&&pm.data)||[]).map(r=>({id:r.id,client:r.client||'',concept:r.concept||'',amount:(r.amount!=null?Number(r.amount):0),currency:r.currency||'EUR',due_date:r.due_date||'',kind:r.kind||'unico',status:r.status||'pendiente',note:r.note||'',paid_months:Array.isArray(r.paid_months)?r.paid_months:[],created_at:r.created_at||''}));
     const m={};(kv.data||[]).forEach(r=>m[r.k]=r.v); DB.reminders=m.reminders||{}; DB.notes=(m.notes&&m.notes.text)||'';
   }catch(e){console.warn('loadAll',e);}
 }
@@ -1133,7 +1162,7 @@ $('#accSave').addEventListener('click',async ()=>{
 });
 
 /* ============ NAV ============ */
-const TITLES={calendario:['Calendario','Semana del equipo'],tareas:['Tareas','Tus tareas asignadas'],clientes:['Clientes','Cuentas y responsables'],eventos:['Eventos','Agenda del equipo por días'],pagos:['Pagos','Mensualidades (Stripe) y cobros'],informe:['Informe','Tu parte diario'],usuarios:['Usuarios','Gestiona quién puede entrar']};
+const TITLES={calendario:['Calendario','Semana del equipo'],tareas:['Tareas','Tus tareas asignadas'],clientes:['Clientes','Cuentas y responsables'],eventos:['Eventos','Agenda del equipo por días'],pagos:['Pagos','Cobros mes a mes (Stripe + manuales)'],informe:['Informe','Tu parte diario'],usuarios:['Usuarios','Gestiona quién puede entrar']};
 function go(view){
   if(view==='pagos'&&!(me&&me.email==='team@onepulso.online')){view='calendario';}
   $$('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.view===view));
@@ -1856,60 +1885,112 @@ let editingPay=null, stripeCache=null;
 const money=(n,cur)=>{try{return new Intl.NumberFormat('es-ES',{style:'currency',currency:cur||'EUR'}).format(Number(n)||0);}catch(_){return (Number(n)||0).toFixed(2)+' '+(cur||'EUR');}};
 const fmtPD=iso=>{if(!iso)return '—';const p=String(iso).split('-').map(Number);return p[2]+' '+MONTHS[p[1]-1].slice(0,3).toLowerCase()+' '+p[0];};
 const stMonthly=s=>s.interval==='year'?s.amount/12:s.interval==='week'?s.amount*4.33:s.interval==='day'?s.amount*30:s.amount;
+/* --- Pagos por meses: cada mes ('YYYY-MM') tiene sus cobros --- */
+const curMonth=()=>isoOf(TODAY).slice(0,7);
+let payMonth=null;
+const addMonth=(M,n)=>{let [y,m]=M.split('-').map(Number);m+=n;while(m>12){m-=12;y++;}while(m<1){m+=12;y--;}return y+'-'+String(m).padStart(2,'0');};
+const monthName=M=>{const [y,m]=M.split('-').map(Number);return MONTHS[m-1].toLowerCase()+' '+y;};
+const monthShort=M=>{const [y,m]=M.split('-').map(Number);return MONTHS[m-1].slice(0,3).toLowerCase()+(y!==TODAY.getFullYear()?' '+String(y).slice(2):'');};
+const dayIn=(M,iso)=>{const [y,m]=M.split('-').map(Number);const last=new Date(y,m,0).getDate();const d=Math.min(Number(String(iso||'').slice(8,10))||1,last);return M+'-'+String(d).padStart(2,'0');};
+const stripeOk=()=>!!(stripeCache&&stripeCache.configured!==false&&!stripeCache.error);
+const payStart=p=>String(p.due_date||p.created_at||isoOf(TODAY)).slice(0,7);
+const isPaidMonth=(p,M)=>(p.paid_months||[]).includes(M);
+// Todo lo que corresponde a un mes: suscripciones (Stripe + manuales) y pagos únicos
+function payMonthData(M){
+  const cur=curMonth(), subs=[], unis=[];
+  if(stripeOk()){
+    const invs=stripeCache.invoices, hasInv=Array.isArray(invs);
+    const bySub={};
+    (invs||[]).filter(i=>i.date&&i.date.slice(0,7)===M).forEach(i=>{
+      if(i.subscription){const g=bySub[i.subscription]||(bySub[i.subscription]={name:i.customer,amount:0,paid:true,date:i.date,paid_date:i.paid_date,status:i.status});g.amount+=i.amount;if(i.status!=='paid')g.paid=false;if(i.paid_date)g.paid_date=i.paid_date;}
+      else unis.push({src:'stripe',name:i.customer,concept:'Factura de Stripe',amount:i.amount,date:i.date,paid:i.status==='paid',when:i.status==='paid'?'pagado el '+fmtPD(i.paid_date||i.date):'factura del '+fmtPD(i.date)});
+    });
+    Object.values(bySub).forEach(g=>subs.push({src:'stripe',name:g.name,amount:g.amount,paid:g.paid,late:!g.paid&&M<cur,when:g.paid?'pagado el '+fmtPD(g.paid_date||g.date):(g.status==='uncollectible'?'no se pudo cobrar':'factura del '+fmtPD(g.date)+' sin pagar')}));
+    (stripeCache.subscriptions||[]).forEach(s=>{
+      if(bySub[s.id]) return;
+      const start=String(s.start||'').slice(0,7)||cur;
+      if(M<start) return;
+      if(!hasInv&&M===cur){subs.push({src:'stripe',name:s.customer,amount:stMonthly(s),paid:!!s.paid,when:s.paid?(s.paid_date?'pagado el '+fmtPD(s.paid_date):''):(s.next?'cobro el '+fmtPD(s.next):'')});return;}
+      if(M<cur) return; // mes pasado sin factura: no se cobró
+      if(s.interval==='month') subs.push({src:'stripe',name:s.customer,amount:s.amount,paid:false,when:'se cobra el '+fmtPD(s.next?dayIn(M,s.next):null)});
+      else if(s.next&&s.next.slice(0,7)===M) subs.push({src:'stripe',name:s.customer,amount:s.amount,paid:false,when:'se cobra el '+fmtPD(s.next)});
+    });
+  }
+  DB.payments.filter(p=>p.kind==='mensualidad'&&M>=payStart(p)).forEach(p=>{
+    const paid=isPaidMonth(p,M);
+    subs.push({src:'manual',id:p.id,name:p.client||p.concept||'—',concept:p.client?p.concept:'',amount:Number(p.amount)||0,paid,late:!paid&&M<cur,when:paid?'cobrado':'vence el '+fmtPD(dayIn(M,p.due_date))});
+  });
+  DB.payments.filter(p=>p.kind!=='mensualidad'&&payStart(p)===M).forEach(p=>{
+    const paid=p.status==='cobrado';
+    unis.push({src:'manual',id:p.id,name:p.client||'—',concept:p.concept||'',amount:Number(p.amount)||0,date:p.due_date,paid,late:!paid&&M<cur});
+  });
+  const all=subs.concat(unis), sum=a=>a.reduce((s,r)=>s+(Number(r.amount)||0),0);
+  return {subs,unis,total:sum(all),paid:sum(all.filter(r=>r.paid)),pend:sum(all.filter(r=>!r.paid))};
+}
 function renderPagos(){
   if(!$('#payRows'))return;
-  // --- manuales (en esta tabla solo los PAGOS ÚNICOS; las suscripciones van arriba) ---
-  const ps=DB.payments.filter(p=>p.kind!=='mensualidad').sort((a,b)=>((a.status==='cobrado')-(b.status==='cobrado'))||String(a.due_date||'9999').localeCompare(String(b.due_date||'9999')));
-  const manDone=DB.payments.filter(p=>p.status==='cobrado').reduce((s,p)=>s+(Number(p.amount)||0),0);
-  const manPend=DB.payments.filter(p=>p.status!=='cobrado').reduce((s,p)=>s+(Number(p.amount)||0),0);
-  // --- stripe ---
-  const subs=(stripeCache&&stripeCache.configured!==false&&!stripeCache.error)?(stripeCache.subscriptions||[]):[];
-  let stPaid=0, stPend=0;
-  subs.forEach(s=>{ if(s.paid) stPaid+=stMonthly(s); else stPend+=stMonthly(s); });
-  // --- totales combinados ---
-  const totalPaid=manDone+stPaid, totalPend=manPend+stPend;
-  $('#payTotal').textContent=money(totalPaid+totalPend,'EUR');
-  $('#payTotalSub').textContent=(subs.length?subs.length+' en Stripe':'')+(subs.length&&DB.payments.length?' · ':'')+(DB.payments.length?DB.payments.length+' manual'+(DB.payments.length===1?'':'es'):'');
-  $('#payDone').textContent=money(totalPaid,'EUR');
-  $('#payPend').textContent=money(totalPend,'EUR');
-  $('#payManMeta').textContent=ps.length+' pago'+(ps.length===1?'':'s');
-  // --- lista manual (con estado) ---
-  $('#payRows').innerHTML=ps.map(p=>{
-    const done=p.status==='cobrado';
-    const badge=done?'<span class="pay-pill ok">Pagado</span>':'<span class="pay-pill pend">Pendiente</span>';
-    const act=done?'':'<button class="pay-act" data-pay-paid="'+p.id+'" title="Marcar como cobrado">Cobrado ✓</button> ';
-    return '<tr data-pay="'+p.id+'" class="crow"><td><b>'+esc(p.client||'—')+'</b>'+(p.kind==='mensualidad'?' <span class="pay-pill men">mes</span>':'')+'</td>'+
-      '<td class="muted">'+esc(p.concept||'—')+'</td><td class="pay-amt">'+money(p.amount,p.currency)+'</td><td class="muted">'+fmtPD(p.due_date)+'</td><td>'+badge+'</td>'+
-      '<td style="text-align:right;white-space:nowrap">'+act+'<button class="rowbtn" data-pay-del="'+p.id+'" title="Eliminar"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></button></td></tr>';
-  }).join('')||'<tr><td colspan="6" class="empty">Añade un pago con «+ Añadir pago» (se suma a lo que te tienen que pagar).</td></tr>';
-  renderStripe();
+  const cur=curMonth(); if(!payMonth) payMonth=cur;
+  const M=payMonth, d=payMonthData(M);
+  $('#payMonthTitle').textContent=monthName(M);
+  $('#payTotalLbl').textContent=M===cur?'Me pagarán este mes':(M<cur?'Me tenían que pagar':'Me pagarán')+' en '+MONTHS[Number(M.slice(5))-1].toLowerCase();
+  $('#payTotal').textContent=money(d.total,'EUR');
+  $('#payTotalSub').textContent=d.subs.length+' suscripcion'+(d.subs.length===1?'':'es')+(d.unis.length?' · '+d.unis.length+' pago'+(d.unis.length===1?'':'s')+' único'+(d.unis.length===1?'':'s'):'');
+  $('#payDone').textContent=money(d.paid,'EUR');
+  $('#payDoneSub').textContent=d.total>0?Math.round(d.paid/d.total*100)+' % del mes':'';
+  $('#payPend').textContent=money(d.pend,'EUR');
+  // lo que quedó sin cobrar de meses anteriores (solo se avisa en el mes actual)
+  let late=0; if(M===cur){for(let k=1;k<=12;k++)late+=payMonthData(addMonth(cur,-k)).pend;}
+  $('#payPendSub').textContent=late>0?'+ '+money(late,'EUR')+' atrasados de meses anteriores':'';
+  // tira de meses: 5 atrás, el actual y 2 adelante
+  let strip='';
+  for(let k=-5;k<=2;k++){const m=addMonth(cur,k), x=payMonthData(m), pct=x.total>0?Math.round(x.paid/x.total*100):0;
+    strip+='<button class="pm'+(m===M?' on':'')+(m===cur?' now':'')+'" data-pm="'+m+'"><span class="pm-m">'+monthShort(m)+(m<cur&&x.pend>0?'<i title="Queda por cobrar"></i>':'')+'</span><span class="pm-v">'+money(x.paid,'EUR').replace(/,00(?=\s)/,'')+'</span><span class="pm-t">de '+money(x.total,'EUR').replace(/,00(?=\s)/,'')+'</span><span class="pm-bar"><b style="width:'+pct+'%"></b></span></button>';}
+  $('#payStrip').innerHTML=strip;
+  const sel=$('#payStrip .pm.on'); if(sel&&isMobile()) sel.scrollIntoView({inline:'center',block:'nearest'});
+  renderStripe(d);
+  // pagos únicos del mes
+  const del='<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>';
+  const unis=d.unis.slice().sort((a,b)=>(a.paid-b.paid)||String(a.date||'').localeCompare(String(b.date||'')));
+  $('#payManMeta').textContent=unis.length?unis.length+' pago'+(unis.length===1?'':'s'):'';
+  $('#payRows').innerHTML=unis.map(r=>{
+    const badge=r.paid?'<span class="pay-pill ok">Pagado</span>':(r.late?'<span class="pay-pill late">Atrasado</span>':'<span class="pay-pill pend">Pendiente</span>');
+    if(r.src==='stripe') return '<tr><td><b>'+esc(r.name)+'</b> <span class="faint" style="font-size:11px">Stripe</span></td><td class="muted">'+esc(r.concept)+'</td><td class="pay-amt">'+money(r.amount,'EUR')+'</td><td class="muted">'+fmtPD(r.date)+'</td><td>'+badge+'</td><td></td></tr>';
+    const act=r.paid?'<button class="pay-act" style="color:var(--faint)" data-pay-unpaid="'+r.id+'" title="Volver a pendiente">Deshacer</button>':'<button class="pay-act" data-pay-paid="'+r.id+'" title="Marcar como cobrado">Cobrado ✓</button>';
+    return '<tr data-pay="'+r.id+'" class="crow"><td><b>'+esc(r.name)+'</b></td><td class="muted">'+esc(r.concept||'—')+'</td><td class="pay-amt">'+money(r.amount,'EUR')+'</td><td class="muted">'+fmtPD(r.date)+'</td><td>'+badge+'</td>'+
+      '<td style="text-align:right;white-space:nowrap">'+act+'<button class="rowbtn" data-pay-del="'+r.id+'" title="Eliminar">'+del+'</button></td></tr>';
+  }).join('')||'<tr><td colspan="6" class="empty">No hay pagos únicos en '+monthName(M)+'. Añade uno con «+ Añadir pago».</td></tr>';
 }
-function renderStripe(){
+function renderStripe(d){
   const box=$('#stripeBox'); if(!box)return;
-  const iv={month:'/mes',year:'/año',week:'/sem',day:'/día'};
-  let note='', rows='', total=0;
-  // --- Stripe ---
+  d=d||payMonthData(payMonth||curMonth());
+  let note='';
   if(stripeCache===null) note='<p class="faint" style="padding:6px 0">Cargando Stripe…</p>';
   else if(stripeCache.configured===false) note='<p class="muted" style="padding:6px 0">Stripe no conectado.</p>';
   else if(stripeCache.error) note='<p style="padding:6px 0;color:#d6006c">Error de Stripe: '+esc(stripeCache.error)+'</p>';
-  else {
-    (stripeCache.subscriptions||[]).forEach(s=>{
-      total+=stMonthly(s);
-      const badge=s.paid?'<span class="pay-pill ok">Pagado</span>':'<span class="pay-pill pend">Pendiente</span>';
-      const when=s.paid?(s.paid_date?'pagado el '+fmtPD(s.paid_date):''):(s.next?'próx. cobro '+fmtPD(s.next):'');
-      rows+='<div class="stripe-row"><div style="min-width:0"><div class="sr-name"><b>'+esc(s.customer)+'</b> '+badge+'</div><div class="sr-meta">Stripe'+(when?' · '+when:'')+'</div></div><div class="pay-amt">'+money(s.amount,s.currency)+' <span class="faint" style="font-weight:500">'+(iv[s.interval]||'')+'</span></div></div>';
-    });
-  }
-  // --- Suscripciones manuales (kind=mensualidad) ---
-  DB.payments.filter(p=>p.kind==='mensualidad').forEach(p=>{
-    total+=(Number(p.amount)||0);
-    const done=p.status==='cobrado';
-    const badge=done?'<span class="pay-pill ok">Pagado</span>':'<span class="pay-pill pend">Pendiente</span>';
-    const act=done?'':'<button class="pay-act" data-pay-paid="'+p.id+'" title="Marcar como cobrado">Cobrado ✓</button> ';
-    rows+='<div class="stripe-row" data-pay="'+p.id+'" style="cursor:pointer"><div style="min-width:0"><div class="sr-name"><b>'+esc(p.client||p.concept||'—')+'</b> '+badge+'</div><div class="sr-meta">Manual'+(p.client&&p.concept?' · '+esc(p.concept):'')+'</div></div><div style="display:flex;align-items:center;gap:10px"><span class="pay-amt">'+money(p.amount,p.currency)+' <span class="faint" style="font-weight:500">/mes</span></span>'+act+'<button class="rowbtn" data-pay-del="'+p.id+'" title="Eliminar"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></button></div></div>';
-  });
-  box.innerHTML=(note+rows)||'<p class="muted" style="padding:8px 0">Aún no hay suscripciones. Añade una con «+ Suscripción» o conecta Stripe.</p>';
-  const st=$('#subsTotal'); if(st) st.textContent=total>0?('· '+money(total,'EUR')+'/mes en total'):'';
+  const del='<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>';
+  const rows=d.subs.slice().sort((a,b)=>(a.paid-b.paid)||(b.amount-a.amount)).map(r=>{
+    const badge=r.paid?'<span class="pay-pill ok">Pagado</span>':(r.late?'<span class="pay-pill late">Atrasado</span>':'<span class="pay-pill pend">Pendiente</span>');
+    const amt='<span class="pay-amt">'+money(r.amount,'EUR')+'</span>';
+    if(r.src==='stripe') return '<div class="stripe-row"><div style="min-width:0"><div class="sr-name"><b>'+esc(r.name)+'</b> '+badge+'</div><div class="sr-meta">Stripe'+(r.when?' · '+r.when:'')+'</div></div><div>'+amt+'</div></div>';
+    const act=r.paid?'<button class="pay-act" style="color:var(--faint)" data-pay-unpaid="'+r.id+'" title="Volver a pendiente este mes">Deshacer</button>':'<button class="pay-act" data-pay-paid="'+r.id+'" title="Marcar cobrado este mes">Cobrado ✓</button>';
+    return '<div class="stripe-row" data-pay="'+r.id+'" style="cursor:pointer"><div style="min-width:0"><div class="sr-name"><b>'+esc(r.name)+'</b> '+badge+'</div><div class="sr-meta">Manual'+(r.concept?' · '+esc(r.concept):'')+(r.when&&!r.paid?' · '+r.when:'')+'</div></div><div style="display:flex;align-items:center;gap:10px">'+amt+act+'<button class="rowbtn" data-pay-del="'+r.id+'" title="Eliminar suscripción">'+del+'</button></div></div>';
+  }).join('');
+  box.innerHTML=(note+rows)||'<p class="muted" style="padding:8px 0">No hay suscripciones en '+monthName(payMonth||curMonth())+'. Añade una con «+ Suscripción» o conecta Stripe.</p>';
+  const tot=d.subs.reduce((s,r)=>s+r.amount,0), pd=d.subs.filter(r=>r.paid).reduce((s,r)=>s+r.amount,0);
+  const st=$('#subsTotal'); if(st) st.textContent=tot>0?('· '+money(pd,'EUR')+' de '+money(tot,'EUR')+' cobrado'):'';
+}
+$('#payStrip').addEventListener('click',e=>{const b=e.target.closest('[data-pm]');if(b){payMonth=b.dataset.pm;renderPagos();}});
+$('#payPrev').addEventListener('click',()=>{payMonth=addMonth(payMonth||curMonth(),-1);renderPagos();});
+$('#payNext').addEventListener('click',()=>{payMonth=addMonth(payMonth||curMonth(),1);renderPagos();});
+$('#payMonthNow').addEventListener('click',()=>{payMonth=curMonth();renderPagos();});
+function setPaid(id,paid){
+  const p=DB.payments.find(x=>x.id===id); if(!p) return;
+  const M=payMonth||curMonth();
+  if(p.kind==='mensualidad'){
+    const s=new Set(p.paid_months||[]); paid?s.add(M):s.delete(M); p.paid_months=[...s].sort();
+    updateRow('payments',id,{paid_months:p.paid_months});
+  } else { p.status=paid?'cobrado':'pendiente'; updateRow('payments',id,{status:p.status}); }
+  renderPagos(); toast(paid?('Cobrado'+(p.kind==='mensualidad'?' en '+monthName(M):'')+' ✓'):'Vuelve a pendiente');
 }
 async function loadStripe(){
   if(!(me&&me.email==='team@onepulso.online')||!window.sb)return;
@@ -1923,7 +2004,8 @@ async function loadStripe(){
 }
 $('#stripeRefresh').addEventListener('click',loadStripe);
 function payRowClick(e){
-  const paid=e.target.closest('[data-pay-paid]'); if(paid){e.stopPropagation();const id=+paid.dataset.payPaid;const p=DB.payments.find(x=>x.id===id);if(!p)return;p.status='cobrado';renderPagos();updateRow('payments',id,{status:'cobrado'});toast('Marcado como cobrado');return;}
+  const paid=e.target.closest('[data-pay-paid]'); if(paid){e.stopPropagation();setPaid(+paid.dataset.payPaid,true);return;}
+  const unp=e.target.closest('[data-pay-unpaid]'); if(unp){e.stopPropagation();setPaid(+unp.dataset.payUnpaid,false);return;}
   const del=e.target.closest('[data-pay-del]'); if(del){e.stopPropagation();const id=+del.dataset.payDel;const p=DB.payments.find(x=>x.id===id);if(!p)return;if(!confirm('¿Eliminar el pago de '+(p.client||'—')+'?'))return;DB.payments=DB.payments.filter(x=>x.id!==id);renderPagos();removeRow('payments',id);toast('Pago eliminado');return;}
   const tr=e.target.closest('[data-pay]'); if(tr&&!e.target.closest('button'))openPay(+tr.dataset.pay);
 }
@@ -1933,20 +2015,36 @@ function openPay(id,preKind){
   editingPay=(typeof id==='number')?id:null;
   $('#payModalTitle').textContent=editingPay?'Editar pago':(preKind==='mensualidad'?'Añadir suscripción':'Añadir pago');
   $('#payClientList').innerHTML=DB.clients.map(c=>'<option value="'+esc(c.name)+'">').join('');
+  const M=payMonth||curMonth();
+  // fecha por defecto: hoy si estás en el mes actual; si no, el día 1 del mes que estás mirando
+  const defDate=M===curMonth()?isoOf(TODAY):M+'-01';
   if(editingPay){const p=DB.payments.find(x=>x.id===editingPay)||{};
-    $('#payClient').value=p.client||'';$('#payAmount').value=(p.amount||p.amount===0?p.amount:'');$('#payConcept').value=p.concept||'';$('#payDate').value=p.due_date||'';$('#payKind').value=p.kind||'unico';$('#payStatus').value=p.status||'pendiente';$('#payNote').value=p.note||'';$('#payDelete').hidden=false;
+    $('#payClient').value=p.client||'';$('#payAmount').value=(p.amount||p.amount===0?p.amount:'');$('#payConcept').value=p.concept||'';$('#payDate').value=p.due_date||'';$('#payKind').value=p.kind||'unico';
+    $('#payStatus').value=p.kind==='mensualidad'?(isPaidMonth(p,M)?'cobrado':'pendiente'):(p.status||'pendiente');$('#payNote').value=p.note||'';$('#payDelete').hidden=false;
   } else {
-    $('#payClient').value='';$('#payAmount').value='';$('#payConcept').value=(preKind==='mensualidad'?'Suscripción mensual':'');$('#payDate').value=isoOf(TODAY);$('#payKind').value=preKind||'unico';$('#payStatus').value='pendiente';$('#payNote').value='';$('#payDelete').hidden=true;
+    $('#payClient').value='';$('#payAmount').value='';$('#payConcept').value=(preKind==='mensualidad'?'Suscripción mensual':'');$('#payDate').value=defDate;$('#payKind').value=preKind||'unico';$('#payStatus').value='pendiente';$('#payNote').value='';$('#payDelete').hidden=true;
   }
+  payKindLabels();
   openModal('mPay');setTimeout(()=>$('#payClient').focus(),50);
 }
+function payKindLabels(){
+  const men=$('#payKind').value==='mensualidad', M=payMonth||curMonth();
+  $('#payDateLbl').textContent=men?'Desde (día de cobro)':'Fecha';
+  $('#payStatusLbl').textContent=men?'Estado de '+monthName(M):'Estado';
+}
+$('#payKind').addEventListener('change',payKindLabels);
 $('#addSubBtn').addEventListener('click',()=>openPay(null,'mensualidad'));
 $('#paySave').addEventListener('click',()=>{
   const client=$('#payClient').value.trim(), concept=$('#payConcept').value.trim(), amount=parseFloat($('#payAmount').value);
   if(!client&&!concept){$('#payClient').focus();toast('Pon al menos el cliente o el concepto');return;}
-  const row={id:editingPay||Date.now(),client:client||null,concept:concept||null,amount:(isNaN(amount)?null:amount),currency:'EUR',due_date:$('#payDate').value||null,kind:$('#payKind').value,status:$('#payStatus').value,note:$('#payNote').value.trim()||null};
-  if(editingPay){const ex=DB.payments.find(x=>x.id===editingPay);if(ex)Object.assign(ex,{client:row.client||'',concept:row.concept||'',amount:(row.amount||0),due_date:row.due_date||'',kind:row.kind,status:row.status,note:row.note||''});}
-  else{DB.payments.unshift({id:row.id,client:row.client||'',concept:row.concept||'',amount:(row.amount||0),currency:'EUR',due_date:row.due_date||'',kind:row.kind,status:row.status,note:row.note||''});}
+  const kind=$('#payKind').value, st=$('#payStatus').value, M=payMonth||curMonth();
+  const ex=editingPay?DB.payments.find(x=>x.id===editingPay):null;
+  // mensualidad: el estado es el del mes que estás mirando (se guarda en paid_months)
+  let pm=new Set((ex&&ex.paid_months)||[]);
+  if(kind==='mensualidad'){ st==='cobrado'?pm.add(M):pm.delete(M); }
+  const row={id:editingPay||Date.now(),client:client||null,concept:concept||null,amount:(isNaN(amount)?null:amount),currency:'EUR',due_date:$('#payDate').value||null,kind,status:(kind==='mensualidad'?((ex&&ex.status)||'pendiente'):st),paid_months:[...pm].sort(),note:$('#payNote').value.trim()||null};
+  if(ex){Object.assign(ex,{client:row.client||'',concept:row.concept||'',amount:(row.amount||0),due_date:row.due_date||'',kind:row.kind,status:row.status,paid_months:row.paid_months,note:row.note||''});}
+  else{DB.payments.unshift({id:row.id,client:row.client||'',concept:row.concept||'',amount:(row.amount||0),currency:'EUR',due_date:row.due_date||'',kind:row.kind,status:row.status,paid_months:row.paid_months,note:row.note||'',created_at:new Date().toISOString()});}
   const dbRow={...row}; if(!editingPay)dbRow.created_by=(me?me.email:null);
   upsertRow('payments',dbRow);
   closeModal('mPay');renderPagos();toast(editingPay?'Pago actualizado':'Pago añadido');

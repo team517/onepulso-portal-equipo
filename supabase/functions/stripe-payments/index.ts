@@ -8,6 +8,7 @@ const cors = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
+const day = (t: number) => new Date(t * 1000).toISOString().slice(0, 10);
 const json = (o: unknown, status = 200) =>
   new Response(JSON.stringify(o), { status, headers: { ...cors, "Content-Type": "application/json" } });
 
@@ -41,6 +42,8 @@ Deno.serve(async (req) => {
       const inv = s.latest_invoice;
       const paid = inv ? (inv.paid === true || inv.status === "paid") : (s.status === "active" || s.status === "trialing");
       const paidAt = inv?.status_transitions?.paid_at;
+      // En las versiones nuevas de la API el periodo va en el item, no en la suscripción
+      const periodEnd = s.current_period_end || it?.current_period_end;
       return {
         id: s.id,
         customer: (cust && (cust.name || cust.email)) || "—",
@@ -48,24 +51,41 @@ Deno.serve(async (req) => {
         amount: price ? (price.unit_amount || 0) / 100 : 0,
         currency: (price?.currency || "eur").toUpperCase(),
         interval: price?.recurring?.interval || "month",
-        next: s.current_period_end ? new Date(s.current_period_end * 1000).toISOString().slice(0, 10) : null,
+        next: periodEnd ? day(periodEnd) : null,
+        start: day(s.start_date || s.created),
         status: s.status,
         paid,
-        paid_date: paidAt ? new Date(paidAt * 1000).toISOString().slice(0, 10) : null,
+        paid_date: paidAt ? day(paidAt) : null,
       };
     });
 
-    const invRes = await sApi("invoices?limit=20");
+    // Facturas de los últimos 13 meses (para ver los cobros mes a mes)
+    const since = Math.floor(Date.now() / 1000) - 400 * 86400;
     // deno-lint-ignore no-explicit-any
-    const invoices = (invRes?.data || []).map((i: any) => ({
-      id: i.id,
-      customer: i.customer_name || i.customer_email || "—",
-      amount: ((i.status === "paid" ? i.amount_paid : i.amount_due) || 0) / 100,
-      currency: (i.currency || "eur").toUpperCase(),
-      status: i.status,
-      date: i.created ? new Date(i.created * 1000).toISOString().slice(0, 10) : null,
-      url: i.hosted_invoice_url || null,
-    }));
+    let raw: any[] = [], after = "";
+    for (let page = 0; page < 5; page++) {
+      const r = await sApi(`invoices?limit=100&created[gte]=${since}${after ? "&starting_after=" + after : ""}`);
+      if (r?.error) break;
+      raw = raw.concat(r.data || []);
+      if (!r.has_more || !r.data?.length) break;
+      after = r.data[r.data.length - 1].id;
+    }
+    const invoices = raw
+      // deno-lint-ignore no-explicit-any
+      .filter((i: any) => i.status !== "draft" && i.status !== "void")
+      // deno-lint-ignore no-explicit-any
+      .map((i: any) => ({
+        id: i.id,
+        subscription: (typeof i.subscription === "string" ? i.subscription : i.subscription?.id) ||
+          i.parent?.subscription_details?.subscription || null,
+        customer: i.customer_name || i.customer_email || "—",
+        amount: ((i.status === "paid" ? i.amount_paid : i.amount_due) || 0) / 100,
+        currency: (i.currency || "eur").toUpperCase(),
+        status: i.status,
+        date: i.created ? day(i.created) : null,
+        paid_date: i.status_transitions?.paid_at ? day(i.status_transitions.paid_at) : null,
+        url: i.hosted_invoice_url || null,
+      }));
 
     return json({ ok: true, configured: true, subscriptions, invoices });
   } catch (e) {
