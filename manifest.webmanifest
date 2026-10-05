@@ -1,0 +1,14 @@
+{
+  "name": "Portal del equipo OnePulso",
+  "short_name": "Portal equipo",
+  "description": "Calendario, tareas, clientes y eventos del equipo OnePulso",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#7A5AF8",
+  "icons": [
+    { "src": "assets/op-icon.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/op-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/op-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
