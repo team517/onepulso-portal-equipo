@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>onepulso · Portal del equipo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,6 +13,8 @@
 <meta name="theme-color" content="#7A5AF8">
 <meta name="apple-mobile-web-app-title" content="Portal del equipo">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <style>
 :root{
   --purple:#7A5AF8; --purple-d:#5B3AD9; --purple-l:#E7E2F5; --purple-xl:#F7F6FC;
@@ -32,7 +34,7 @@ body{font-family:var(--font);color:var(--ink);background:var(--bg);line-height:1
 a{color:inherit;text-decoration:none}
 img{max-width:100%;display:block}
 button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
-input,select{font-family:inherit}
+input,select,textarea{font-family:inherit}
 [hidden]{display:none!important}
 ::selection{background:var(--purple-l)}
 .eyebrow{font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--purple)}
@@ -162,7 +164,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
 .ev-item:hover{border-color:var(--line-2)}
 .ev-time2{font-size:13px;font-weight:700;color:var(--ink);min-width:44px;flex:none;text-align:right}
 .ev-item .ev-body{flex:1;min-width:0}
-.ev-item .ev-t{font-size:14px;font-weight:600;color:var(--ink)}
+.ev-item .ev-t{font-size:14px;font-weight:600;color:var(--ink);white-space:normal;overflow:visible}
 .ev-item .ev-with{font-size:12px;color:var(--muted);font-weight:500}
 .ev-item .ev-note2{font-size:12px;color:var(--faint);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ev-item .ev-del{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;color:var(--faint);flex:none;background:transparent;border:none;cursor:pointer}
@@ -182,6 +184,8 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
 .pay-act{font-size:12.5px;font-weight:600;color:#0a7d47;cursor:pointer;background:none;border:none;padding:0 4px}
 .stripe-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
 .stripe-row:first-child{border-top:none}
+.sr-name{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.sr-meta{font-size:12px;color:var(--faint);margin-top:2px}
 @media(max-width:700px){.pay-cards{grid-template-columns:1fr}}
 .wd-row{display:flex;gap:6px;flex-wrap:wrap}
 .wd{width:34px;height:34px;border-radius:9px;border:1px solid var(--line-2);background:#fff;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer}
@@ -383,6 +387,163 @@ textarea.area{height:auto;min-height:80px;padding:10px 14px;resize:vertical;line
   .wk-col{min-height:52vh}
 }
 @media(max-width:560px){.view{padding:16px 14px}.grid2{grid-template-columns:1fr}}
+
+/* ================= MÓVIL ================= */
+.m-logo{display:none}
+.mdots{display:flex;flex-wrap:wrap;gap:3px;align-content:flex-start}
+.mdot{width:7px;height:7px;border-radius:50%;background:var(--purple);flex:none}
+.mdot.done{opacity:.35}
+.mmore{font-size:9.5px;font-weight:700;color:var(--muted);line-height:7px}
+.mpin{font-size:9px;line-height:1}
+html{-webkit-tap-highlight-color:transparent}
+@media(max-width:900px){
+  .m-logo{display:flex;margin-bottom:28px}
+  .m-logo img{height:30px}
+  .auth__panel{min-height:100vh;min-height:100dvh;padding:32px 20px calc(32px + env(safe-area-inset-bottom))}
+}
+@media(max-width:820px){
+  .side{width:min(286px,86vw);height:100vh;height:100dvh;overflow-y:auto;padding:calc(18px + env(safe-area-inset-top)) 14px calc(16px + env(safe-area-inset-bottom))}
+  .nav-item{padding:12px 12px;font-size:15px}
+}
+/* sin ratón (móvil/tablet): lo que salía solo al pasar el ratón, visible siempre */
+@media(hover:none){
+  .tsk .tdel{opacity:1;width:26px;height:26px;font-size:17px;top:3px;right:3px}
+  .tsk-top{padding-right:26px}
+  .wk-h .rem.add,.cell .rem.add{opacity:1}
+  .ev .evdel{opacity:.7}
+  .tbl tr:hover td{background:transparent}
+  .tk:hover{background:transparent}
+}
+@media(max-width:700px){
+  /* barra superior compacta: botones de icono + botón flotante */
+  .topbar{height:auto;min-height:60px;padding:calc(8px + env(safe-area-inset-top)) 12px 8px;gap:10px}
+  .topbar .title{min-width:0;flex:1}
+  .topbar .title h1{font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .topbar .title p{display:none}
+  .topbar .right{gap:6px;margin-left:0;flex:none}
+  .topbar .smtp-tag{display:none}
+  .tb-ic{width:40px;height:40px;padding:0;font-size:17px;border-radius:11px}
+  .tb-ic .lbl{display:none}
+  #primaryAction{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:40;height:52px;padding:0 22px;border-radius:26px;font-size:15px;box-shadow:0 10px 26px color-mix(in srgb,var(--purple) 45%,transparent)}
+  .view{padding:16px 14px 104px}
+  .inp{font-size:16px}
+  textarea.area{font-size:16px}
+
+  /* calendario: cabecera y botones */
+  .cal-head{margin-bottom:14px;gap:12px}
+  .cal-head h2{font-size:26px}
+  .cal-tools{width:100%;justify-content:space-between;gap:8px}
+  .cal-tools>.seg:last-child{gap:6px!important}
+  .nav-arr{width:40px;padding:0;font-size:20px;line-height:1}
+  .nav-arr .lbl{display:none}
+  .notes-card{margin-bottom:14px;padding:12px 14px}
+
+  /* semana = lista de días hacia abajo */
+  #calWrap{overflow-x:visible}
+  .wk{grid-template-columns:1fr;border-radius:14px}
+  .wk-col{min-height:0;border-right:none;border-bottom:1px solid var(--line);scroll-margin-top:72px}
+  .wk-col:last-child{border-bottom:none}
+  .wk-h{flex-direction:row;align-items:center;gap:10px;padding:10px 14px;border-bottom:none}
+  .wk-h .dn{font-size:12px;min-width:30px}
+  .wk-h .dnum{font-size:20px}
+  .wk-h-b{flex:1;min-width:0}
+  .wk-h .rem{max-width:none;min-width:0}
+  .wk-b{padding:0 12px 12px;gap:7px;overflow:visible}
+  .wk-col.today .wk-h .dn{color:var(--purple)}
+  .tsk{padding:9px 10px;font-size:13.5px;cursor:pointer}
+  .tsk .tt{white-space:normal;overflow:visible;line-height:1.35}
+  .tsk-top{align-items:flex-start}
+  .tsk .who-tag{font-size:11px}
+  .addbtn{font-size:12.5px;padding:7px 12px}
+
+  /* mes = rejilla compacta con puntos; tocar un día abre su semana */
+  .dow,.weeks{min-width:0}
+  .dow div{padding:7px 0;text-align:center;font-size:10px;letter-spacing:.04em}
+  .cell{min-height:58px;padding:5px 4px;gap:4px;cursor:pointer;align-items:center}
+  .cell .n{font-size:13px}
+  .cell.today .n{width:24px;height:24px}
+
+  /* tablas -> tarjetas */
+  .tbl{min-width:0}
+  .tbl thead{display:none}
+  .tbl,.tbl tbody{display:block}
+  .tbl tr{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;padding:14px 16px;border-bottom:1px solid var(--line)}
+  .tbl tr:last-child{border-bottom:none}
+  .tbl td{display:block;padding:0;border:none!important;font-size:14px}
+  .tbl td:nth-child(1),.tbl td:nth-child(2){flex:0 0 100%;min-width:0}
+  .tbl td:last-child:not(:first-child){margin-left:auto;display:flex;align-items:center;gap:4px}
+  .tbl td.empty{flex:1 1 100%;padding:26px 6px}
+  .tbl td:empty{display:none}
+  .tbl tr.mine{background:#e8f8ef;box-shadow:inset 3px 0 0 #0a7d47}
+  .tbl tr.mine>td{background:transparent!important;box-shadow:none!important}
+  #clientRows td:nth-child(2),#userRows td:nth-child(2){padding-left:46px}
+  #clientRows td:nth-child(3),#userRows td:nth-child(3){margin-left:46px}
+  .who .av{width:36px;height:36px}
+  .rowbtn{width:36px;height:36px}
+
+  /* tareas (lista) */
+  .tk{flex-wrap:wrap;gap:6px 12px;padding:13px 16px;align-items:flex-start}
+  .tk .tx{flex:1 1 calc(100% - 40px)}
+  .tk .foot{margin-left:34px;flex-wrap:wrap;flex:1 1 100%}
+  .tk .foot:empty{display:none}
+  .tk .cb{width:24px;height:24px;margin-top:1px}
+  .tsec{padding:14px 16px 4px}
+  .card-h{padding:14px 16px;gap:10px}
+  .empty{padding:30px 16px}
+
+  /* informe */
+  #repUser{max-width:100%!important;width:100%}
+  .rep-card{padding:13px 16px}
+
+  /* eventos */
+  .ev-head{gap:12px;margin-bottom:12px}
+  .ev-head>.seg{width:100%;gap:6px!important}
+  .ev-head>.seg #evToday{flex:1}
+  .ev-day{padding:12px 0}
+  .ev-day-h{flex-direction:row;align-items:baseline;gap:7px}
+  .ev-day:has(.ev-empty){grid-template-columns:auto 1fr;align-items:baseline;gap:10px}
+  .ev-item{display:grid;grid-template-columns:auto 1fr auto;column-gap:11px;row-gap:6px;align-items:start;padding:11px 12px}
+  .ev-item .ev-time2{grid-column:1;grid-row:1/span 2;padding-top:1px}
+  .ev-item .ev-body{grid-column:2;grid-row:1}
+  .ev-item>.who-tag{grid-column:2;grid-row:2;justify-self:start}
+  .ev-item .ev-del{grid-column:3;grid-row:1;margin:-4px -4px 0 0;width:32px;height:32px}
+  .ev-item .ev-note2{white-space:normal}
+
+  /* pagos */
+  .pay-cards{grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+  .pay-cards .pay-card:first-child{grid-column:1/-1}
+  .pay-card{padding:12px 14px}
+  .pay-big{font-size:21px}
+  #stripeBox{padding:2px 16px 14px!important}
+  .stripe-row{flex-wrap:wrap;gap:6px 12px;padding:12px 0}
+  .stripe-row>div:first-child{flex:1 1 150px}
+  .stripe-row>div:last-child{margin-left:auto}
+  .pay-act{padding:6px 4px}
+
+  /* ventanas = hoja que sube desde abajo */
+  .modal{padding:0;align-items:flex-end}
+  .modal .box,.modal .box.box-wide{max-width:100%;border-radius:20px 20px 0 0;max-height:94vh;max-height:94dvh;display:flex;flex-direction:column;animation:sheet .26s cubic-bezier(.2,.8,.2,1) both}
+  .modal .box .h{padding:14px 18px;flex:none;position:relative}
+  .modal .box .h::before{content:"";position:absolute;top:6px;left:50%;width:38px;height:4px;margin-left:-19px;border-radius:4px;background:var(--line-2)}
+  .modal .box .b{max-height:none;flex:1 1 auto;min-height:0;padding:16px 18px;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+  .modal .box .f{flex:none;flex-wrap:wrap;padding:12px 18px calc(12px + env(safe-area-inset-bottom))}
+  .modal .box .f .btn{flex:1 1 auto;height:46px}
+  .modal .box .f .btn-primary{flex:2 1 auto}
+  .modal .box .f .push{margin-left:0}
+  .x{width:38px;height:38px}
+  .nt-list{max-height:none}
+  .rm-item{padding:10px 12px;gap:10px}
+  .rm-time{font-size:18px;min-width:50px}
+
+  /* aviso */
+  .toast{left:16px;right:16px;bottom:calc(80px + env(safe-area-inset-bottom));justify-content:center;text-align:center}
+}
+@keyframes sheet{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
+@media(max-width:380px){
+  .topbar .title h1{font-size:16.5px}
+  .cal-head h2{font-size:23px}
+  .seg button{padding:0 12px}
+}
 </style>
 </head>
 <body>
@@ -400,6 +561,7 @@ textarea.area{height:auto;min-height:80px;padding:10px 14px;resize:vertical;line
   </aside>
   <section class="auth__panel">
     <form class="loginCard" id="loginForm" novalidate>
+      <div class="logo m-logo"><img src="assets/logo-onepulso.png" alt="onepulso"></div>
       <h2 style="margin-bottom:24px">Iniciar sesión</h2>
       <div class="alert" id="alert"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg><span id="alertMsg"></span></div>
       <div class="field" id="fEmail"><label for="email">Correo de empresa</label>
@@ -440,7 +602,7 @@ textarea.area{height:auto;min-height:80px;padding:10px 14px;resize:vertical;line
     <header class="topbar">
       <button class="menu-btn" id="menuBtn"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
       <div class="title"><h1 id="vwTitle">Calendario</h1><p id="vwSub">Semana del equipo</p></div>
-      <div class="right"><span class="smtp-tag" id="smtpTag" hidden>📧 <b id="smtpTagEmail"></b></span><button class="btn btn-ghost btn-sm" id="remindBtn" hidden>⏰ Recordatorios</button><button class="btn btn-ghost btn-sm" id="notifyBtn" hidden>✉️ Avisar tareas</button><button class="btn btn-ghost btn-sm" id="smtpBtn" hidden>📧 Conectar correo</button><button class="btn btn-primary btn-sm" id="primaryAction" hidden>Acción</button></div>
+      <div class="right"><span class="smtp-tag" id="smtpTag" hidden>📧 <b id="smtpTagEmail"></b></span><button class="btn btn-ghost btn-sm tb-ic" id="remindBtn" title="Recordatorios" hidden><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M5 3 2 6M19 3l3 3"/></svg><span class="lbl">Recordatorios</span></button><button class="btn btn-ghost btn-sm tb-ic" id="notifyBtn" title="Avisar tareas" hidden><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7Z"/></svg><span class="lbl">Avisar tareas</span></button><button class="btn btn-ghost btn-sm tb-ic" id="smtpBtn" title="Conectar correo" hidden><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="19" height="15" rx="2.5"/><path d="m3 6.5 9 6.5 9-6.5"/></svg><span class="lbl">Conectar correo</span></button><button class="btn btn-primary btn-sm" id="primaryAction" hidden>Acción</button></div>
     </header>
 
     <!-- Calendario -->
@@ -451,8 +613,8 @@ textarea.area{height:auto;min-height:80px;padding:10px 14px;resize:vertical;line
           <div class="seg"><button id="segWeek" class="on">Semana</button><button id="segMonth">Mes</button></div>
           <div class="seg" style="background:transparent;padding:0;gap:10px">
             <button class="btn btn-ghost btn-sm" id="calToday">Hoy</button>
-            <button class="btn btn-ghost btn-sm" id="calPrev">‹ Anterior</button>
-            <button class="btn btn-ghost btn-sm" id="calNext">Siguiente ›</button>
+            <button class="btn btn-ghost btn-sm nav-arr" id="calPrev" title="Anterior">‹<span class="lbl"> Anterior</span></button>
+            <button class="btn btn-ghost btn-sm nav-arr" id="calNext" title="Siguiente"><span class="lbl">Siguiente </span>›</button>
           </div>
         </div>
       </div>
@@ -521,8 +683,8 @@ textarea.area{height:auto;min-height:80px;padding:10px 14px;resize:vertical;line
         <div><div class="eyebrow">Eventos</div><h2 id="evTitle">—</h2></div>
         <div class="seg" style="background:transparent;padding:0;gap:10px">
           <button class="btn btn-ghost btn-sm" id="evToday">Esta semana</button>
-          <button class="btn btn-ghost btn-sm" id="evPrev">‹ Anterior</button>
-          <button class="btn btn-ghost btn-sm" id="evNext">Siguiente ›</button>
+          <button class="btn btn-ghost btn-sm nav-arr" id="evPrev" title="Semana anterior">‹<span class="lbl"> Anterior</span></button>
+          <button class="btn btn-ghost btn-sm nav-arr" id="evNext" title="Semana siguiente"><span class="lbl">Siguiente </span>›</button>
         </div>
       </div>
       <div id="evList" class="ev-list"></div>
@@ -1055,6 +1217,28 @@ function reminderChip(iso,rem){
   if(r) return '<button class="rem has" data-rem="'+iso+'"'+(admin()?' title="Editar recordatorio"':'')+'>📌 <span>'+esc(r)+'</span></button>';
   return admin()?'<button class="rem add" data-rem="'+iso+'" title="Añadir recordatorio">+ nota</button>':'';
 }
+/* Móvil: el mes es una rejilla compacta (un punto de color por tarea); tocar un día abre esa semana */
+const mqMobile=window.matchMedia('(max-width:700px)');
+const isMobile=()=>mqMobile.matches;
+function cellCompact(dt,inMonth,isT,dd,tasks,reminders){
+  if(!inMonth) return '<div class="cell out"><span class="n">'+dd+'</span></div>';
+  const iso=isoOf(dt), wd=(dt.getDay()+6)%7;
+  const dayTasks=tasks.filter(t=>t.date===iso);
+  const doneRec=new Set(dayTasks.filter(t=>t.rec_id).map(t=>t.rec_id));
+  const items=DB.recurring.filter(r=>(r.weekdays||[]).includes(wd)&&!doneRec.has(r.id)).map(r=>({a:r.assignee,done:false}))
+    .concat(dayTasks.map(t=>({a:t.assignee,done:!!t.done})));
+  const MAX=6;
+  const dots=items.slice(0,MAX).map(x=>'<i class="mdot'+(x.done?' done':'')+'"'+(x.a?' style="background:'+userColor(x.a)+'"':'')+'></i>').join('')
+    +(items.length>MAX?'<span class="mmore">+'+(items.length-MAX)+'</span>':'');
+  return '<div class="cell'+(isT?' today':'')+'" data-date="'+iso+'" data-jump="'+iso+'"><span class="n">'+dd+'</span>'
+    +(reminders[iso]?'<span class="mpin" title="'+esc(reminders[iso])+'">📌</span>':'')
+    +'<div class="mdots">'+dots+'</div></div>';
+}
+function scrollToDay(iso){
+  const col=document.querySelector('#calWrap .wk-col[data-date="'+iso+'"]');
+  if(col) col.scrollIntoView({block:'start',behavior:'smooth'});
+}
+mqMobile.addEventListener&&mqMobile.addEventListener('change',()=>{ if(me) renderCalendar(); });
 function renderCalendar(){
   const wrap=$('#calWrap'), tasks=load(K.tasks,[]), reminders=load(K.reminders,{}), um=usersMap();
   if(calView==='semana'){
@@ -1080,6 +1264,7 @@ function renderCalendar(){
       if(dnum<1){mm=m-1;dd=prevDays+dnum;if(mm<0){mm=11;yy--;}}
       else if(dnum>daysIn){mm=m+1;dd=dnum-daysIn;if(mm>11){mm=0;yy++;}}
       const dt=new Date(yy,mm,dd), isT=inMonth&&sameDay(dt,TODAY);
+      if(isMobile()){ h+=cellCompact(dt,inMonth,isT,dd,tasks,reminders); continue; }
       h+='<div class="cell'+(inMonth?'':' out')+(isT?' today':'')+'"'+(inMonth?' data-date="'+isoOf(dt)+'"':'')+'><div class="cell-top"><span class="n">'+dd+'</span>'+(inMonth?reminderChip(isoOf(dt),reminders):'')+'</div>'+(inMonth?cellInner(dt,tasks,um):'')+'</div>';
     }
     wrap.innerHTML=h+'</div>';
@@ -1087,13 +1272,14 @@ function renderCalendar(){
 }
 $('#segWeek').addEventListener('click',()=>{calView='semana';$('#segWeek').classList.add('on');$('#segMonth').classList.remove('on');renderCalendar();});
 $('#segMonth').addEventListener('click',()=>{calView='mes';$('#segMonth').classList.add('on');$('#segWeek').classList.remove('on');renderCalendar();});
-$('#calToday').addEventListener('click',()=>{TODAY=new Date();calView='semana';$('#segWeek').classList.add('on');$('#segMonth').classList.remove('on');calDate=new Date(TODAY);renderCalendar();});
+$('#calToday').addEventListener('click',()=>{TODAY=new Date();calView='semana';$('#segWeek').classList.add('on');$('#segMonth').classList.remove('on');calDate=new Date(TODAY);renderCalendar();if(isMobile())scrollToDay(isoOf(TODAY));});
 $('#calPrev').addEventListener('click',()=>{if(calView==='semana')calDate.setDate(calDate.getDate()-7);else{calDate.setDate(1);calDate.setMonth(calDate.getMonth()-1);}renderCalendar();});
 $('#calNext').addEventListener('click',()=>{if(calView==='semana')calDate.setDate(calDate.getDate()+7);else{calDate.setDate(1);calDate.setMonth(calDate.getMonth()+1);}renderCalendar();});
 
 /* calendar interactions (delegated) */
 const calWrap=$('#calWrap');
 calWrap.addEventListener('click',e=>{
+  const jump=e.target.closest('[data-jump]'); if(jump){const iso=jump.dataset.jump;calView='semana';$('#segWeek').classList.add('on');$('#segMonth').classList.remove('on');calDate=new Date(iso+'T12:00:00');renderCalendar();scrollToDay(iso);return;}
   const add=e.target.closest('.addbtn'); if(add){openTask(null,add.dataset.add);return;}
   const rmb=e.target.closest('.rem'); if(rmb){e.stopPropagation();editReminder(rmb.dataset.rem);return;}
   const rcd=e.target.closest('[data-recdone]'); if(rcd){e.stopPropagation();materializeRec(+rcd.dataset.recdone, rcd.dataset.recdate, true);return;}
@@ -1711,7 +1897,7 @@ function renderStripe(){
       total+=stMonthly(s);
       const badge=s.paid?'<span class="pay-pill ok">Pagado</span>':'<span class="pay-pill pend">Pendiente</span>';
       const when=s.paid?(s.paid_date?'pagado el '+fmtPD(s.paid_date):''):(s.next?'próx. cobro '+fmtPD(s.next):'');
-      rows+='<div class="stripe-row"><div style="min-width:0"><b>'+esc(s.customer)+'</b> '+badge+' <span class="faint" style="font-size:11px">Stripe</span>'+(when?' <span class="faint" style="font-size:12px">· '+when+'</span>':'')+'</div><div class="pay-amt">'+money(s.amount,s.currency)+' <span class="faint" style="font-weight:500">'+(iv[s.interval]||'')+'</span></div></div>';
+      rows+='<div class="stripe-row"><div style="min-width:0"><div class="sr-name"><b>'+esc(s.customer)+'</b> '+badge+'</div><div class="sr-meta">Stripe'+(when?' · '+when:'')+'</div></div><div class="pay-amt">'+money(s.amount,s.currency)+' <span class="faint" style="font-weight:500">'+(iv[s.interval]||'')+'</span></div></div>';
     });
   }
   // --- Suscripciones manuales (kind=mensualidad) ---
@@ -1720,7 +1906,7 @@ function renderStripe(){
     const done=p.status==='cobrado';
     const badge=done?'<span class="pay-pill ok">Pagado</span>':'<span class="pay-pill pend">Pendiente</span>';
     const act=done?'':'<button class="pay-act" data-pay-paid="'+p.id+'" title="Marcar como cobrado">Cobrado ✓</button> ';
-    rows+='<div class="stripe-row" data-pay="'+p.id+'" style="cursor:pointer"><div style="min-width:0"><b>'+esc(p.client||p.concept||'—')+'</b> '+badge+(p.client&&p.concept?' <span class="faint" style="font-size:12px">· '+esc(p.concept)+'</span>':'')+'</div><div style="display:flex;align-items:center;gap:10px"><span class="pay-amt">'+money(p.amount,p.currency)+' <span class="faint" style="font-weight:500">/mes</span></span>'+act+'<button class="rowbtn" data-pay-del="'+p.id+'" title="Eliminar"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></button></div></div>';
+    rows+='<div class="stripe-row" data-pay="'+p.id+'" style="cursor:pointer"><div style="min-width:0"><div class="sr-name"><b>'+esc(p.client||p.concept||'—')+'</b> '+badge+'</div><div class="sr-meta">Manual'+(p.client&&p.concept?' · '+esc(p.concept):'')+'</div></div><div style="display:flex;align-items:center;gap:10px"><span class="pay-amt">'+money(p.amount,p.currency)+' <span class="faint" style="font-weight:500">/mes</span></span>'+act+'<button class="rowbtn" data-pay-del="'+p.id+'" title="Eliminar"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></button></div></div>';
   });
   box.innerHTML=(note+rows)||'<p class="muted" style="padding:8px 0">Aún no hay suscripciones. Añade una con «+ Suscripción» o conecta Stripe.</p>';
   const st=$('#subsTotal'); if(st) st.textContent=total>0?('· '+money(total,'EUR')+'/mes en total'):'';
