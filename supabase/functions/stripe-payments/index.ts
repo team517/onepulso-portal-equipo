@@ -34,13 +34,16 @@ Deno.serve(async (req) => {
       return await r.json();
     };
 
-    const subsRes = await sApi("subscriptions?status=active&limit=100&expand[]=data.customer");
+    const subsRes = await sApi("subscriptions?status=active&limit=100&expand[]=data.customer&expand[]=data.latest_invoice");
     if (subsRes?.error) return json({ ok: false, configured: true, error: subsRes.error.message || "Error de Stripe" });
     // deno-lint-ignore no-explicit-any
     const subscriptions = (subsRes.data || []).map((s: any) => {
       const it = s.items?.data?.[0];
       const price = it?.price;
       const cust = s.customer;
+      const inv = s.latest_invoice;
+      const paid = inv ? (inv.paid === true || inv.status === "paid") : (s.status === "active" || s.status === "trialing");
+      const paidAt = inv?.status_transitions?.paid_at;
       return {
         id: s.id,
         customer: (cust && (cust.name || cust.email)) || "—",
@@ -50,6 +53,8 @@ Deno.serve(async (req) => {
         interval: price?.recurring?.interval || "month",
         next: s.current_period_end ? new Date(s.current_period_end * 1000).toISOString().slice(0, 10) : null,
         status: s.status,
+        paid,
+        paid_date: paidAt ? new Date(paidAt * 1000).toISOString().slice(0, 10) : null,
       };
     });
 
