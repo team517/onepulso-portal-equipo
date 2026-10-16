@@ -323,6 +323,7 @@ textarea.area{height:auto;min-height:80px;padding:10px 14px;resize:vertical;line
 .badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px}
 .badge.on{background:#e4f7ee;color:#0a7d47} .badge.pend{background:#fbf1d9;color:#9a7400}
 .badge.paused{background:var(--neutral);color:var(--muted)}
+.badge.sup{background:#e0f2fe;color:#0369a1}
 .badge.admin{background:var(--purple-l);color:var(--purple-d)} .badge.member{background:var(--neutral);color:var(--muted)}
 .rowbtn{color:var(--faint);width:32px;height:32px;border-radius:8px;display:grid;place-items:center}
 .rowbtn:hover{background:#fdeef0;color:#e5484d}
@@ -659,6 +660,7 @@ html{-webkit-tap-highlight-color:transparent}
           <h3>Tareas</h3>
           <div style="display:flex;align-items:center;gap:12px">
             <span class="faint" id="tasksMeta"></span>
+            <select class="inp" id="fWho" style="height:36px;width:auto;min-width:150px;font-size:13.5px" hidden></select>
             <div class="seg"><button id="fMine" class="on">Mías</button><button id="fAll">Todas</button></div>
           </div>
         </div>
@@ -846,7 +848,7 @@ html{-webkit-tap-highlight-color:transparent}
       <div class="field"><label>Correo del usuario</label><input class="inp" id="nuEmail" placeholder="nombre@correo.com" spellcheck="false" autocapitalize="none"></div>
       <div class="grid2">
         <div class="field"><label>Contraseña provisional</label><input class="inp" id="nuPass" placeholder="Mínimo 6 caracteres"></div>
-        <div class="field"><label>Rol</label><select class="inp" id="nuRole"><option value="member">Miembro</option><option value="admin">Administrador</option></select></div>
+        <div class="field"><label>Rol</label><select class="inp" id="nuRole"><option value="member">Miembro</option><option value="supervisor">Supervisor/a (ve todo el equipo, sin pagos)</option><option value="admin">Administrador</option></select></div>
       </div>
       <p class="hint">Podrá iniciar sesión con este correo y contraseña, y se le podrán asignar tareas y clientes.</p>
     </div>
@@ -1100,6 +1102,9 @@ const color20=s=>'color-mix(in srgb,'+colorFor(s)+' 15%,#fff)';
 
 let me=null;
 const admin=()=>!!(me&&me.role==='admin');
+// Supervisor/a: sub-admin de solo lectura (ve tareas, clientes, eventos e informes de todos; sin pagos ni usuarios)
+const supervisor=()=>!!(me&&me.role==='supervisor');
+const seeAll=()=>admin()||supervisor();
 
 /* ============ LOGIN ============ */
 $('#year').textContent=new Date().getFullYear();
@@ -1141,13 +1146,14 @@ function enterApp(u){
   $('#login').hidden=true;$('#app').hidden=false;
   $('#uName').textContent=u.name;$('#uEmail').textContent=u.email;$('#uAv').textContent=initials(u.name);$('#uAv').style.background=colorFor(u.name);
   const admin=u.role==='admin';$('#adminLbl').hidden=!admin;$('#navUsers').hidden=!admin;$('#smtpBtn').hidden=!admin;$('#notifyBtn').hidden=!admin;$('#remindBtn').hidden=!admin;$('#navPagos').hidden=(u.email!=='team@onepulso.online');loadSmtpTag();
+  setTaskFilter(u.role==='supervisor'?'todas':'mias');
   TODAY=new Date(); calView='semana'; calDate=new Date(TODAY);
   $('#segWeek').classList.add('on'); $('#segMonth').classList.remove('on');
   renderAll();go('calendario');toast('Sesión iniciada · '+u.name);
 }
 $('#logout').addEventListener('click',async ()=>{if(!confirm('¿Cerrar sesión en este dispositivo?'))return;try{if(window.sb)await sb.auth.signOut({scope:'local'});}catch(_){}me=null;profilesCache=[];$('#app').hidden=true;$('#login').hidden=false;$('#loginForm').reset();loginClear();$('#email').focus();});
 /* ----- Mi cuenta (ver datos + cambiar contraseña) ----- */
-const ROLES={admin:'Administrador',member:'Miembro'};
+const ROLES={admin:'Administrador',member:'Miembro',supervisor:'Supervisor/a'};
 $('#accountBtn').addEventListener('click',()=>{
   if(!me)return;
   $('#accAlert').classList.remove('show');
@@ -1480,6 +1486,10 @@ $('#tDelete').addEventListener('click',()=>{ if(editingRecurring!=null){const ri
 let taskFilter='mias';
 $('#fMine').addEventListener('click',()=>{taskFilter='mias';$('#fMine').classList.add('on');$('#fAll').classList.remove('on');renderTasks();});
 $('#fAll').addEventListener('click',()=>{taskFilter='todas';$('#fAll').classList.add('on');$('#fMine').classList.remove('on');renderTasks();});
+// Filtro por persona (admin y supervisor/a): ver las tareas de cada empleado
+let whoFilter='';
+$('#fWho').addEventListener('change',()=>{whoFilter=$('#fWho').value;if(whoFilter){taskFilter='todas';$('#fAll').classList.add('on');$('#fMine').classList.remove('on');}renderTasks();});
+function setTaskFilter(f){taskFilter=f;whoFilter='';$('#fAll').classList.toggle('on',f==='todas');$('#fMine').classList.toggle('on',f==='mias');}
 function taskRow(t,um){
   return '<div class="tk'+(t.done?' done':'')+'" data-id="'+t.id+'"><button class="cb" data-toggle="'+t.id+'" title="'+(t.done?'Reabrir':'Marcar terminada')+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 5 5L20 7"/></svg></button>'
     +'<div class="tx"><b>'+esc(t.t)+'</b><span>'+fmtDate(t.date)+(t.done?' · Terminada':'')+'</span></div>'
@@ -1493,14 +1503,17 @@ function recRow(r,um){
 }
 function renderTasks(){
   const um=usersMap(), all=load(K.tasks,[]);
-  const base=(taskFilter==='mias'?all.filter(t=>me&&t.assignee===me.email):all);
+  const fw=$('#fWho'); fw.hidden=!seeAll();
+  if(seeAll()){fw.innerHTML='<option value="">Todo el equipo</option>'+profilesCache.filter(u=>u.role!=='admin').map(u=>'<option value="'+esc(u.email)+'"'+(u.email===whoFilter?' selected':'')+'>'+esc(u.name||u.email)+'</option>').join('');}
+  const who=(seeAll()&&taskFilter==='todas')?whoFilter:'';
+  const base=(taskFilter==='mias'?all.filter(t=>me&&t.assignee===me.email):who?all.filter(t=>t.assignee===who):all);
   const byDate=(a,b)=>(a.date||'').localeCompare(b.date||'');
   const pend=base.filter(t=>!t.done).sort(byDate), done=base.filter(t=>t.done).sort(byDate);
   $('#tasksMeta').textContent=pend.length+' pendientes · '+done.length+' terminadas';
   let h='<div class="tsec">Pendientes</div>';
   h+= pend.length? pend.map(t=>taskRow(t,um)).join('') : '<div class="empty">'+(taskFilter==='mias'?'No tienes tareas pendientes.':'Sin tareas pendientes.')+'</div>';
   if(done.length) h+='<div class="tsec">Terminadas</div>'+done.map(t=>taskRow(t,um)).join('');
-  const recs=(taskFilter==='mias'?DB.recurring.filter(r=>me&&r.assignee===me.email):DB.recurring);
+  const recs=(taskFilter==='mias'?DB.recurring.filter(r=>me&&r.assignee===me.email):who?DB.recurring.filter(r=>r.assignee===who):DB.recurring);
   if(recs.length) h+='<div class="tsec">Recurrentes (predeterminadas)</div>'+recs.map(r=>recRow(r,um)).join('');
   $('#taskList').innerHTML=h;
 }
@@ -1513,7 +1526,7 @@ $('#taskList').addEventListener('click',e=>{
 /* ----- Informe (parte diario) ----- */
 let reportUser=null;
 async function renderInforme(){
-  const isAdmin=admin();
+  const isAdmin=seeAll();
   if(!reportUser) reportUser=me?me.email:'';
   const sel=$('#repUser');
   if(isAdmin){ sel.hidden=false; sel.innerHTML=profilesCache.map(u=>'<option value="'+esc(u.email)+'"'+(u.email===reportUser?' selected':'')+'>'+esc(u.name||u.email)+'</option>').join(''); }
@@ -1587,7 +1600,7 @@ function renderUsers(){
   $('#usersMeta').textContent=us.length+' con acceso';
   $('#userRows').innerHTML=us.map(u=>{const isMe=me&&u.email===me.email;const nm=u.name||u.email;return(
     '<tr><td><div class="who"><span class="av" style="background:'+colorFor(nm)+'">'+initials(nm)+'</span><b>'+esc(nm)+(isMe?' <span class="faint" style="font-weight:500">(tú)</span>':'')+'</b></div></td>'+
-    '<td class="muted">'+esc(u.email)+'</td><td><span class="badge '+(u.role==='admin'?'admin':'member')+'">'+(u.role==='admin'?'Administrador':'Miembro')+'</span></td><td class="muted">'+esc((u.created_at||'').slice(0,10)||'—')+'</td>'+
+    '<td class="muted">'+esc(u.email)+'</td><td><span class="badge '+(u.role==='admin'?'admin':u.role==='supervisor'?'sup':'member')+'">'+(ROLES[u.role]||'Miembro')+'</span></td><td class="muted">'+esc((u.created_at||'').slice(0,10)||'—')+'</td>'+
     '<td style="text-align:right">'+(!isMe?'<button class="rowbtn" data-del-user="'+esc(u.email)+'" title="Quitar acceso"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></button>':'')+'</td></tr>'
   );}).join('');
 }

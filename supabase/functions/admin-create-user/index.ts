@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
       // Cualquier correo válido: solo el admin (verificado arriba) puede crear usuarios.
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return json({ ok: false, error: "Escribe un correo válido" });
       if (!body.password || String(body.password).length < 6) return json({ ok: false, error: "La contraseña debe tener al menos 6 caracteres" });
-      const role = body.role === "admin" ? "admin" : "member";
+      const role = body.role === "admin" ? "admin" : body.role === "supervisor" ? "supervisor" : "member";
       const name = String(body.name || "");
       const { data, error } = await admin.auth.admin.createUser({
         email, password: String(body.password), email_confirm: true,
